@@ -4,10 +4,7 @@
 use image::Rgb;
 use num::complex::{c64, Complex64};
 
-use nalgebra::allocator::Allocator;
-use nalgebra::storage::Owned;
-use nalgebra::{DefaultAllocator, DimMin, DimName};
-use nalgebra::{OMatrix, OVector};
+use nalgebra::{DMatrix, DVector};
 
 use crate::colorschemes::{get_period_color, get_smooth_orbit_color};
 
@@ -16,21 +13,15 @@ const PERIOD_WINDOW: usize = 2 * MAX_PERIODS;
 
 // {{{ structs
 
-type Matrix<D> = OMatrix<Complex64, D, D>;
-type Vector<D> = OVector<Complex64, D>;
+type Matrix = DMatrix<Complex64>;
+type Vector = DVector<Complex64>;
 
-#[derive(Clone, Copy, Debug)]
-pub struct Netbrot<D>
-where
-    D: DimName + DimMin<D, Output = D>,
-    Owned<Complex64, D>: Copy,
-    Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<D, D> + Allocator<D>,
-{
+#[derive(Clone, Debug)]
+pub struct Netbrot {
     /// Matrix used in the iteration
-    pub mat: Matrix<D>,
+    pub mat: Matrix,
     /// Starting point for the iteration.
-    pub z0: Vector<D>,
+    pub z0: Vector,
     /// Constant offset for the iteration.
     pub c: Complex64,
 
@@ -40,53 +31,24 @@ where
     pub escape_radius_squared: f64,
 }
 
-impl<D> Netbrot<D>
-where
-    D: DimName + DimMin<D, Output = D>,
-    Owned<Complex64, D>: Copy,
-    Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<D, D> + Allocator<D>,
-{
-    pub fn new(mat: Matrix<D>, maxit: usize, escape_radius: f64) -> Self {
+impl Netbrot {
+    pub fn new(mat: &Matrix, maxit: usize, escape_radius: f64) -> Self {
         Netbrot {
-            mat,
-            z0: OVector::from_vec(vec![c64(0.0, 0.0); mat.nrows()]),
+            mat: mat.clone(),
+            z0: DVector::from_vec(vec![c64(0.0, 0.0); mat.nrows()]),
             c: c64(0.0, 0.0),
             maxit,
             escape_radius_squared: escape_radius * escape_radius,
         }
     }
-
-    pub fn at(self, c: Complex64) -> Self {
-        Netbrot {
-            mat: self.mat,
-            z0: self.z0,
-            c,
-            maxit: self.maxit,
-            escape_radius_squared: self.escape_radius_squared,
-        }
-    }
-
-    pub fn from(self, z0: Complex64) -> Self {
-        Netbrot {
-            mat: self.mat,
-            z0: OVector::from_vec(vec![z0; self.mat.nrows()]),
-            c: self.c,
-            maxit: self.maxit,
-            escape_radius_squared: self.escape_radius_squared,
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
-pub struct EscapeResult<D: DimName>
-where
-    DefaultAllocator: Allocator<D>,
-{
+pub struct EscapeResult {
     /// Iteration at which the point escaped or None otherwise.
     pub iteration: Option<usize>,
     /// Last point of the iterate (will be very large if the point escaped).
-    pub z: Vector<D>,
+    pub z: Vector,
 }
 
 /// Period of a point, if it does not escape.
@@ -102,11 +64,7 @@ type PeriodResult = Option<usize>;
 ///     R = \frac{2 \sqrt{d}}{\sigma_{\text{min}}(A)^2}.
 /// $$
 #[allow(dead_code)]
-pub fn escape_radius_squared<D>(mat: Matrix<D>) -> f64
-where
-    D: DimMin<D, Output = D>,
-    DefaultAllocator: Allocator<D> + Allocator<D, D>,
-{
+pub fn escape_radius_squared(mat: Matrix) -> f64 {
     // NOTE: singular values are sorted descendingly, so we can just take the last
     // one here without worrying about it too much :D
     let n = mat.nrows();
@@ -150,21 +108,15 @@ pub fn pixel_to_point(
 ///
 /// where $A$ is $d \times d$ matrix, $z$ is also a $d$ dimensional vector and
 /// $c$ is a complex constant.
-pub fn netbrot_orbit_escape<D>(brot: Netbrot<D>) -> EscapeResult<D>
-where
-    D: DimName,
-    D: DimMin<D, Output = D>,
-    Owned<Complex64, D>: Copy,
-    Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<D> + Allocator<D, D>,
-{
-    let mut z = brot.z0;
-    let mat = brot.mat;
+pub fn netbrot_orbit_escape(brot: &Netbrot) -> EscapeResult {
+    let mut z = brot.z0.clone();
+    let mat = &brot.mat;
     let c = brot.c;
     let maxit = brot.maxit;
     let escape_radius_squared = brot.escape_radius_squared;
 
-    let mut matz = mat * z;
+    let mut matz = z.clone();
+    mat.mul_to(&z, &mut matz);
 
     for i in 0..maxit {
         if z.norm_squared() > escape_radius_squared {
@@ -175,10 +127,13 @@ where
         }
 
         z = matz.component_mul(&matz).add_scalar(c);
-        matz = mat * z;
+        mat.mul_to(&z, &mut matz);
     }
 
-    EscapeResult { iteration: None, z }
+    EscapeResult {
+        iteration: None,
+        z: z.clone(),
+    }
 }
 
 // }}}
@@ -189,36 +144,33 @@ where
 ///
 /// The period is computed by looking at a long time iteration that does not
 /// escape and checking the tolerance.
-pub fn netbrot_orbit_period<D>(brot: Netbrot<D>) -> PeriodResult
-where
-    D: DimName + DimMin<D, Output = D>,
-    Owned<Complex64, D>: Copy,
-    Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<D> + Allocator<D, D>,
-{
+pub fn netbrot_orbit_period(brot: &Netbrot) -> PeriodResult {
     match netbrot_orbit_escape(brot) {
         EscapeResult { iteration: None, z } => {
             // When the limit was reached but the point did not escape, we look
             // for a period in a very naive way.
-            let mat = brot.mat;
+            let mat = &brot.mat;
             let c = brot.c;
-            let mut matz = mat * z;
-            let mut z_period = [z.scale(0.0); PERIOD_WINDOW];
+            let mut matz = z.clone();
+            let mut z_period: Vec<Vector> = Vec::new();
 
             // Evaluate some more points
-            z_period[0] = z;
+            z_period[0] = z.clone();
+            mat.mul_to(&z, &mut matz);
 
             #[allow(clippy::needless_range_loop)]
             for i in 1..PERIOD_WINDOW {
                 z_period[i] = matz.component_mul(&matz).add_scalar(c);
-                matz = mat * z_period[i];
+                mat.mul_to(&z_period[i], &mut matz);
             }
 
             // Check newly evaluated points for periodicity
             for i in 2..MAX_PERIODS {
                 let mut z_period_norm: f64 = 0.0;
                 for j in 0..i - 1 {
-                    z_period_norm += (z_period[j] - z_period[i + j - 1]).norm_squared();
+                    let zj = &z_period[j];
+                    let zi = &z_period[i + j - 1];
+                    z_period_norm += (zj - zi).norm_squared();
                 }
 
                 if z_period_norm.sqrt() < 1.0e-5 {
@@ -239,25 +191,21 @@ where
 
 // {{{ rendering
 
-pub fn render_orbit<D>(
+pub fn render_orbit(
     pixels: &mut [u8],
-    brot: Netbrot<D>,
+    brot: &Netbrot,
     bounds: (usize, usize),
     upper_left: Complex64,
     lower_right: Complex64,
-) where
-    D: DimName + DimMin<D, Output = D>,
-    Owned<Complex64, D>: Copy,
-    Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<D> + Allocator<D, D>,
-{
+) {
     assert!(pixels.len() == 3 * bounds.0 * bounds.1);
     let maxit = brot.maxit;
+    let mut local_brot = Netbrot::new(&brot.mat, brot.maxit, brot.escape_radius_squared.sqrt());
 
     for row in 0..bounds.1 {
         for column in 0..bounds.0 {
-            let point = pixel_to_point(bounds, (column, row), upper_left, lower_right);
-            let color = match netbrot_orbit_escape(brot.at(point)) {
+            local_brot.c = pixel_to_point(bounds, (column, row), upper_left, lower_right);
+            let color = match netbrot_orbit_escape(&local_brot) {
                 EscapeResult {
                     iteration: None,
                     z: _,
@@ -276,24 +224,20 @@ pub fn render_orbit<D>(
     }
 }
 
-pub fn render_period<D>(
+pub fn render_period(
     pixels: &mut [u8],
-    brot: Netbrot<D>,
+    brot: &Netbrot,
     bounds: (usize, usize),
     upper_left: Complex64,
     lower_right: Complex64,
-) where
-    D: DimName + DimMin<D, Output = D>,
-    Owned<Complex64, D>: Copy,
-    Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<D> + Allocator<D, D>,
-{
+) {
     assert!(pixels.len() == 3 * bounds.0 * bounds.1);
+    let mut local_brot = Netbrot::new(&brot.mat, brot.maxit, brot.escape_radius_squared.sqrt());
 
     for row in 0..bounds.1 {
         for column in 0..bounds.0 {
-            let c = pixel_to_point(bounds, (column, row), upper_left, lower_right);
-            let color = match netbrot_orbit_period(brot.at(c)) {
+            local_brot.c = pixel_to_point(bounds, (column, row), upper_left, lower_right);
+            let color = match netbrot_orbit_period(&local_brot) {
                 None => Rgb([255, 255, 255]),
                 Some(period) => get_period_color(period, MAX_PERIODS, 3),
             };
@@ -306,25 +250,23 @@ pub fn render_period<D>(
     }
 }
 
-pub fn render_fixed_points<D>(
+pub fn render_fixed_points(
     pixels: &mut [u8],
-    brot: Netbrot<D>,
+    brot: &Netbrot,
     bounds: (usize, usize),
     upper_left: Complex64,
     lower_right: Complex64,
-) where
-    D: DimName + DimMin<D, Output = D>,
-    Owned<Complex64, D>: Copy,
-    Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<D> + Allocator<D, D>,
-{
+) {
     assert!(pixels.len() == 3 * bounds.0 * bounds.1);
     let maxit = brot.maxit;
+    let nrows = brot.mat.nrows();
+    let mut local_brot = Netbrot::new(&brot.mat, brot.maxit, brot.escape_radius_squared.sqrt());
 
     for row in 0..bounds.1 {
         for column in 0..bounds.0 {
             let z0 = pixel_to_point(bounds, (column, row), upper_left, lower_right);
-            let color = match netbrot_orbit_escape(brot.from(z0)) {
+            local_brot.z0 = DVector::from_vec(vec![z0; nrows]);
+            let color = match netbrot_orbit_escape(&local_brot) {
                 EscapeResult {
                     iteration: None,
                     z: _,

@@ -61,7 +61,7 @@ fn main() {
     let filename = args.filename;
     println!("Coloring: {:?}", color_type);
 
-    let exhibit = gallery::EXHIBIT_3_DEFAULTS;
+    let exhibit = gallery::get_exhibit(gallery::ExhibitId::EXHIBIT_3_DEFAULTS);
     let upper_left = exhibit.upper_left;
     let lower_right = exhibit.lower_right;
 
@@ -77,7 +77,7 @@ fn main() {
 
     let mut pixels = RgbImage::new(bounds.0 as u32, bounds.1 as u32);
 
-    let brot = Netbrot::new(exhibit.mat, MAX_ITERATIONS, exhibit.escape_radius);
+    let brot = Netbrot::new(&exhibit.mat, MAX_ITERATIONS, exhibit.escape_radius);
 
     // Scope of slicing up `pixels` into horizontal bands.
     println!("Executing...");
@@ -94,13 +94,13 @@ fn main() {
 
             match color_type {
                 ColorType::Orbit => {
-                    render_orbit(band, brot, band_bounds, band_upper_left, band_lower_right)
+                    render_orbit(band, &brot, band_bounds, band_upper_left, band_lower_right)
                 }
                 ColorType::Period => {
-                    render_period(band, brot, band_bounds, band_upper_left, band_lower_right)
+                    render_period(band, &brot, band_bounds, band_upper_left, band_lower_right)
                 }
                 ColorType::Fixed => {
-                    render_fixed_points(band, brot, band_bounds, band_upper_left, band_lower_right)
+                    render_fixed_points(band, &brot, band_bounds, band_upper_left, band_lower_right)
                 }
             }
         });
