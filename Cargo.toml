@@ -7,6 +7,6 @@ edition = "2021"
 clap = { "version" = "4.5", "features" = ["derive"] }
 colors-transform = { "version" = "0.2" }
 image = { "version" = "0.25", "features" = ["png"] }
-nalgebra = { git = "https://github.com/alexfikl/nalgebra.git", branch = "u200" }
+nalgebra = { "version" = "0.33", "features" = ["default"] }
 num = { "version" = "0.4" }
 rayon = { "version" = "1.10" }
