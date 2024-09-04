@@ -203,7 +203,7 @@ def main(
             log.error("No indices in range for '%s'.", filename)
             continue
 
-        suffix = filename.stem.upper()
+        suffix = filename.stem.upper().replace("-", "_")
         width = len(str(matrices.size))
 
         for i in sorted(indices):
