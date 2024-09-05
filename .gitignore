@@ -2,6 +2,7 @@
 
 data/*.mat
 data/*.npz
+*.json
 
 .ruff_cache
 .mypy_cache

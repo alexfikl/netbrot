@@ -11,12 +11,19 @@
 #![allow(elided_lifetimes_in_paths)]
 
 mod colorschemes;
-mod gallery;
 mod netbrot;
+
+use std::error::Error;
+use std::fs::File;
+use std::io::BufReader;
+use std::path::Path;
+use std::time::Instant;
 
 use netbrot::{pixel_to_point, render_fixed_points, render_orbit, render_period, Netbrot};
 
-use std::time::Instant;
+use nalgebra::DMatrix;
+use num::complex::Complex64;
+use serde::{Deserialize, Serialize};
 
 use clap::{Parser, ValueEnum, ValueHint};
 use image::RgbImage;
@@ -25,6 +32,16 @@ use rayon::prelude::*;
 const MAX_ITERATIONS: usize = 256;
 
 // {{{ Command-line parser
+
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
+enum ColorType {
+    /// Plot orbits.
+    Orbit,
+    /// Plot periodicity for orbits that do not escape.
+    Period,
+    /// Fixed points
+    Fixed,
+}
 
 #[derive(Parser, Debug)]
 #[clap(version, about)]
@@ -37,19 +54,35 @@ struct Cli {
     #[arg(short, long, default_value_t = 8000)]
     resolution: u32,
 
+    /// Input file name containing the exhibit to render
+    #[arg(value_hint = ValueHint::FilePath)]
+    exhibit: String,
+
     /// Output file name
-    #[arg(last = true, value_hint = ValueHint::FilePath)]
-    filename: String,
+    #[arg(short, long, value_hint = ValueHint::FilePath)]
+    outfile: Option<String>,
 }
 
-#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
-enum ColorType {
-    /// Plot orbits.
-    Orbit,
-    /// Plot periodicity for orbits that do not escape.
-    Period,
-    /// Fixed points
-    Fixed,
+// {{ exhibits
+
+#[derive(Serialize, Deserialize)]
+pub struct Exhibit {
+    /// Matrix used in the iteration.
+    pub mat: DMatrix<Complex64>,
+    /// Escape radius for this matrix.
+    pub escape_radius: f64,
+    /// Bounding box for the points.
+    pub upper_left: Complex64,
+    pub lower_right: Complex64,
+}
+
+fn read_exhibit(filename: String) -> Result<Exhibit, Box<dyn Error>> {
+    let file = File::open(filename)?;
+    let reader = BufReader::new(file);
+
+    let exhibit = serde_json::from_reader(reader)?;
+
+    Ok(exhibit)
 }
 
 // }}}
@@ -58,10 +91,9 @@ fn main() {
     let args = Cli::parse();
 
     let color_type = args.color;
-    let filename = args.filename;
     println!("Coloring: {:?}", color_type);
 
-    let exhibit = gallery::get_exhibit(gallery::ExhibitId::EXHIBIT_3_DEFAULTS);
+    let exhibit = read_exhibit(args.exhibit.clone()).unwrap();
     let upper_left = exhibit.upper_left;
     let lower_right = exhibit.lower_right;
 
@@ -108,5 +140,11 @@ fn main() {
     let elapsed = now.elapsed().as_millis() as f32 / 1000.0;
     println!("Elapsed {}s!", elapsed);
 
-    pixels.save(filename).unwrap();
+    match args.outfile {
+        Some(filename) => pixels.save(filename).unwrap(),
+        None => {
+            let filename = Path::new(&args.exhibit).with_extension("png");
+            pixels.save(filename).unwrap();
+        }
+    };
 }
