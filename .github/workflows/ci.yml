@@ -52,6 +52,6 @@ jobs:
     - uses: actions/checkout@v4
     - run: |
         make release
-        ./target/release/netbrot -- result.png
+        ./target/release/netbrot -r 2048 data/exhibit-example-2.json
 
 # vim: set ts=2 sw=2 et:
