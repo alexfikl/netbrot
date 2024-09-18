@@ -82,7 +82,7 @@ pub fn netbrot_repeat(mat: &Matrix, z0: &Vector, c: Complex64, n: u32) -> Vector
 ///
 /// where $diag(x)$ just gives a matrix with *x* on the diagonal.
 #[allow(dead_code)]
-pub fn netbrot_repeat_prime(mat: &Matrix, z: &Vector, jac: &mut Matrix) {
+pub fn netbrot_prime(mat: &Matrix, z: &Vector, jac: &mut Matrix) {
     let mut matz = z.clone();
     mat.mul_to(z, &mut matz);
 
@@ -94,27 +94,27 @@ pub fn netbrot_repeat_prime(mat: &Matrix, z: &Vector, jac: &mut Matrix) {
     }
 }
 
-// Compute the eigenvalues of the Jacobian of the *n* times composition.
-//
-// By the chain rule, the Jacobian is given by
-//
-// $$
-//      J_{f^n}(z) = J_f(f^{n - 1}(z)) J_f(f^{n - 2}(z)) \cdots J_f(z)
-// $$
-//
-// We compute the Jacobian of the composition right-to-left by multiplying the
-// resulting matrices as we construct the *n* times composition $f^n(z)$.
+/// Compute the Jacobian of the Netbrot composition map.
+///
+/// The Jacobian is given by the chain rule
+///
+/// $$
+///     J_{f^n}(z) = J_f(f^{n - 1}(z)) \circ \cdots \circ J_f(z)
+/// $$
+///
+/// We compute this by going backwards and constructing both the Jacobian and
+/// $f^n(z)$ iteratively.
 #[allow(dead_code)]
-pub fn netbrot_repeat_eigenvalues(mat: Matrix, z0: Vector, c: Complex64, n: usize) -> Vector {
+pub fn netbrot_repeat_prime(mat: &Matrix, z0: &Vector, c: Complex64, n: u32) -> Matrix {
     let mut z = z0.clone();
-    let mut matz = z0.clone();
+    let mut matz = z.clone();
 
     let mut jac = mat.clone();
     let mut jac_n = mat.clone();
     let mut tmp = mat.clone();
 
     // Compute J_f(z)
-    netbrot_repeat_prime(&mat, &z, &mut jac);
+    netbrot_prime(&mat, &z, &mut jac);
 
     for _ in 1..n {
         // Compute f^n(z)
@@ -122,13 +122,19 @@ pub fn netbrot_repeat_eigenvalues(mat: Matrix, z0: Vector, c: Complex64, n: usiz
         mat.mul_to(&z, &mut matz);
 
         // Compute J_f(f^n(z))
-        netbrot_repeat_prime(&mat, &z, &mut jac_n);
+        netbrot_prime(&mat, &z, &mut jac_n);
 
         // Left multiply into J_{f^n}
         jac_n.mul_to(&jac, &mut tmp);
         jac.copy_from(&tmp);
     }
 
+    jac
+}
+
+/// Compute the eigenvalues of the Jacobian of the *n* times composition.
+pub fn netbrot_repeat_eigenvalues(mat: &Matrix, z: &Vector, c: Complex64, n: u32) -> Vector {
+    let jac = netbrot_repeat_prime(mat, z, c, n);
     jac.eigenvalues().unwrap()
 }
 
