@@ -9,8 +9,8 @@ use crate::render::{MAX_PERIODS, PERIOD_WINDOW};
 
 // {{{ types
 
-type Matrix = DMatrix<Complex64>;
-type Vector = DVector<Complex64>;
+pub type Matrix = DMatrix<Complex64>;
+pub type Vector = DVector<Complex64>;
 
 #[derive(Clone, Debug)]
 pub struct Netbrot {
@@ -58,7 +58,7 @@ type PeriodResult = Option<usize>;
 ///
 /// This just computes the composition and does not iterate to an escape.
 #[allow(dead_code)]
-pub fn netbrot_repeat(mat: Matrix, z0: Vector, c: Complex64, n: usize) -> Vector {
+pub fn netbrot_repeat(mat: &Matrix, z0: &Vector, c: Complex64, n: u32) -> Vector {
     let mut z = z0.clone();
     if n >= 1 {
         let mut matz = z0.clone();
