@@ -163,42 +163,38 @@ def main(
     c: complex,
     *,
     nperiod: int = 1,
-    npoints: int = 512,
+    npoints: int = 2048,
     check_gradients: bool = False,
 ) -> int:
     # {{{ read in matrix
 
     import json
 
+    if not filename.exists():
+        log.error("File does not exist: '%s'.", filename)
+        return 1
+
     with open(filename, encoding="utf-8") as inf:
         data = json.load(inf)
 
-    escape_radius = data["escape_radius"]
+    escape_radius = data["escape_radius"] + 1
     elements, *shape = data["mat"]
     assert shape[0] == shape[1]
 
     mat = np.array([complex(*e) for e in elements]).reshape(*shape).T
-    nrows = shape[1]
+    ndim = shape[1]
 
     # }}}
 
     # {{{ generate a cloud of points in the escape sphere (?)
 
-    size = (nrows, 2 * npoints)
-
-    # fmt: off
     rng = np.random.default_rng(seed=42)
-    zs = (
-        rng.uniform(-escape_radius, escape_radius, size)
-        + 1.0j * rng.uniform(-escape_radius, escape_radius, size)
-    )
-    # fmt: on
+    zs = rng.uniform(0, 1, (2 * ndim, npoints))
+    factor = rng.uniform(0, 1, (1, npoints))
+    zs = escape_radius * factor ** (1 / ndim) * zs / la.norm(zs, axis=0)
+    zs = zs[:ndim] + 1j * zs[ndim:]
 
-    # insist points are inside the escape radius
-    zs = zs[:, la.norm(zs, axis=0) < escape_radius][:, :npoints]
-    log.info("Got %d points.", zs.shape[1])
-
-    _, npoints = size = zs.shape
+    assert np.all(la.norm(zs, axis=0) <= escape_radius)
 
     # }}}
 
@@ -207,13 +203,13 @@ def main(
     if check_gradients:
         jacz = netbrot_prime(zs, mat, c, nperiod)
 
-        eps = 1.0e-9
+        eps = 1.0e-7
         jacz_fd = np.empty_like(jacz)
         for m in range(npoints):
             df = netbrot(zs[:, m], mat, c, nperiod)
 
-            for i in range(nrows):
-                for j in range(nrows):
+            for i in range(ndim):
+                for j in range(ndim):
                     # FIXME: is this right for complex functions?
                     e_j = np.zeros_like(df)
                     e_j[j] = eps
@@ -368,7 +364,7 @@ if __name__ == "__main__":
         default=(0, 0),
         help="Real and imaginary parts of c",
     )
-    parser.add_argument("-n", default=1, type=int, help="Order of the composition")
+    parser.add_argument("-n", default=1, type=int, help="Number of self-compositions")
     parser.add_argument(
         "-q",
         "--quiet",
