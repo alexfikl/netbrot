@@ -114,7 +114,7 @@ pub fn netbrot_repeat_prime(mat: &Matrix, z0: &Vector, c: Complex64, n: u32) -> 
     let mut tmp = mat.clone();
 
     // Compute J_f(z)
-    netbrot_prime(&mat, &z, &mut jac);
+    netbrot_prime(mat, &z, &mut jac);
 
     for _ in 1..n {
         // Compute f^n(z)
@@ -122,7 +122,7 @@ pub fn netbrot_repeat_prime(mat: &Matrix, z0: &Vector, c: Complex64, n: u32) -> 
         mat.mul_to(&z, &mut matz);
 
         // Compute J_f(f^n(z))
-        netbrot_prime(&mat, &z, &mut jac_n);
+        netbrot_prime(mat, &z, &mut jac_n);
 
         // Left multiply into J_{f^n}
         jac_n.mul_to(&jac, &mut tmp);

@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-eqsolver = { "version" = "0.2" }
 clap = { "version" = "4.5", "features" = ["derive"] }
 colors-transform = { "version" = "0.2" }
 image = { "version" = "0.25", "features" = ["png"] }
 nalgebra = { "version" = "0.33", "features" = ["default", "serde-serialize"] }
 num = { "version" = "0.4" }
+num-traits = { "version" = "0.2" }
 rand = { "version" = "0.8" }
 rayon = { "version" = "1.10" }
 serde = { "version" = "1.0", "features" = ["derive"]}
