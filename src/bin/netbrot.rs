@@ -122,7 +122,6 @@ fn main() {
     let brot = Netbrot::new(&exhibit.mat, args.maxit, exhibit.escape_radius);
     display(&renderer, &brot);
 
-    println!();
     println!("Executing...");
     let now = Instant::now();
 
