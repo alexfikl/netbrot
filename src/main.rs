@@ -14,6 +14,7 @@ mod coeffeval;
 mod colorschemes;
 mod fixedpoints;
 mod netbrot;
+mod newton;
 mod render;
 
 use std::error::Error;
@@ -23,7 +24,6 @@ use std::path::Path;
 use std::time::Instant;
 
 use netbrot::Netbrot;
-use render::{pixel_to_point, render_orbit, render_period};
 
 use nalgebra::DMatrix;
 use num::complex::Complex64;
@@ -118,6 +118,8 @@ fn main() {
     let brot = Netbrot::new(&exhibit.mat, args.maxit, exhibit.escape_radius);
     println!("Escape radius {}", brot.escape_radius_squared.sqrt());
 
+    fixedpoints::find_fixed_points_by_newton(&brot, 512, 1, 1.0e-8);
+
     // Scope of slicing up `pixels` into horizontal bands.
     println!("Executing...");
     let now = Instant::now();
@@ -127,17 +129,25 @@ fn main() {
         bands.into_par_iter().for_each(|(i, band)| {
             let top = i;
             let band_bounds = (bounds.0, 1);
-            let band_upper_left = pixel_to_point(bounds, (0, top), upper_left, lower_right);
+            let band_upper_left = render::pixel_to_point(bounds, (0, top), upper_left, lower_right);
             let band_lower_right =
-                pixel_to_point(bounds, (bounds.0, top + 1), upper_left, lower_right);
+                render::pixel_to_point(bounds, (bounds.0, top + 1), upper_left, lower_right);
 
             match color_type {
-                ColorType::Orbit => {
-                    render_orbit(band, &brot, band_bounds, band_upper_left, band_lower_right)
-                }
-                ColorType::Period => {
-                    render_period(band, &brot, band_bounds, band_upper_left, band_lower_right)
-                }
+                ColorType::Orbit => render::render_orbit(
+                    band,
+                    &brot,
+                    band_bounds,
+                    band_upper_left,
+                    band_lower_right,
+                ),
+                ColorType::Period => render::render_period(
+                    band,
+                    &brot,
+                    band_bounds,
+                    band_upper_left,
+                    band_lower_right,
+                ),
             }
         });
     }
