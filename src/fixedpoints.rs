@@ -116,6 +116,7 @@ pub fn find_fixed_points_by_newton(
     }
 
     let indices = find_unique_fixed_points(brot, &fixedpoints, nperiod, eps);
+    println!("Found {} fixed points.", indices.len());
     indices.iter().map(|&i| fixedpoints[i].clone()).collect()
 }
 
