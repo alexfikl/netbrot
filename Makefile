@@ -58,6 +58,10 @@ clippy:			## Run clippy lint checks
 
 # {{{ building
 
+test:			## Run tests
+	cargo test --all-features
+.PHONY: test
+
 build:			## Build the project in debug mode
 	cargo build --locked --all-features --verbose
 .PHONY: build
