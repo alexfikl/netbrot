@@ -8,6 +8,7 @@ use num::complex::{c64, Complex64};
 
 use crate::netbrot::Matrix;
 
+#[allow(dead_code)]
 pub fn coeffs_2x2_1(mat: &Matrix, c: Complex64) -> [[([u32; 2], Complex64); 5]; 2] {
     let a_0_0 = mat[(0, 0)];
     let a_0_1 = mat[(0, 1)];

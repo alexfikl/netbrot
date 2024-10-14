@@ -133,6 +133,7 @@ pub fn netbrot_repeat_prime(mat: &Matrix, z0: &Vector, c: Complex64, n: u32) -> 
 }
 
 /// Compute the eigenvalues of the Jacobian of the *n* times composition.
+#[allow(dead_code)]
 pub fn netbrot_repeat_eigenvalues(mat: &Matrix, z: &Vector, c: Complex64, n: u32) -> Vector {
     let jac = netbrot_repeat_prime(mat, z, c, n);
     jac.eigenvalues().unwrap()

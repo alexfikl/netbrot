@@ -102,10 +102,9 @@ pub fn find_fixed_points_by_newton(
 
     let mut fixedpoints: Vec<Vector> = Vec::with_capacity(npoints as usize);
 
-    let f = |z: Vector| netbrot_repeat_fp(&brot.mat, &z, brot.c, nperiod);
-    let j = |z: Vector| netbrot_repeat_prime_fp(&brot.mat, &z, brot.c, nperiod);
-    let mut solver = NewtonRhapson::new(f, j);
-    solver.with_rtol(1.0e-8).with_maxit(512);
+    let f = |z: &Vector| netbrot_repeat_fp(&brot.mat, z, brot.c, nperiod);
+    let j = |z: &Vector| netbrot_repeat_prime_fp(&brot.mat, z, brot.c, nperiod);
+    let solver = NewtonRhapson::new(f, j).with_rtol(1.0e-8).with_maxit(512);
 
     for _ in 0..npoints {
         let z0 = generate_random_points_on_sphere(&mut rng, ndim, radius);
