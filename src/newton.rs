@@ -59,6 +59,7 @@ pub struct NewtonRaphson<T, F, J> {
 pub type Vector<T> = DVector<Complex<T>>;
 pub type Matrix<T> = DMatrix<Complex<T>>;
 
+#[allow(dead_code)]
 pub struct NewtonRaphsonResult<T> {
     /// Solution vector.
     pub x: Vector<T>,
