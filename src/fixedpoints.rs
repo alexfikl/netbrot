@@ -109,7 +109,7 @@ pub fn find_fixed_points_by_newton(
     for _ in 0..npoints {
         let z0 = generate_random_points_on_sphere(&mut rng, ndim, radius);
         match solver.solve(z0) {
-            Ok(z) => fixedpoints.push(z),
+            Ok(z) => fixedpoints.push(z.x),
             Err(_) => continue,
         }
     }

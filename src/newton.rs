@@ -8,7 +8,7 @@ use num::complex::Complex;
 use num_traits::Float;
 
 const NEWTON_DEFAULT_RTOL: f64 = 1.0e-6;
-const NEWTON_DEFAULT_MAXIT: usize = 256;
+const NEWTON_DEFAULT_MAXIT: u32 = 256;
 
 // {{{ Error
 
@@ -53,16 +53,24 @@ pub struct NewtonRaphson<T, F, J> {
     /// The relative tolerance (in $x$) at which convergence is assumed.
     rtol: T,
     /// Maximum number of iterations to perform (regardless of *rtol*).
-    maxit: usize,
+    maxit: u32,
 }
 
-pub type NewtonRaphsonResult<T> = Result<T, NewtonRaphsonError>;
+pub type Vector<T> = DVector<Complex<T>>;
+pub type Matrix<T> = DMatrix<Complex<T>>;
+
+pub struct NewtonRaphsonResult<T> {
+    /// Solution vector.
+    pub x: Vector<T>,
+    /// Number of iterations necessary to reach solution.
+    pub iteration: u32,
+}
 
 impl<T, F, J> NewtonRaphson<T, F, J>
 where
     T: Float + RealField,
-    F: Fn(&DVector<Complex<T>>) -> DVector<Complex<T>>,
-    J: Fn(&DVector<Complex<T>>) -> DMatrix<Complex<T>>,
+    F: Fn(&Vector<T>) -> Vector<T>,
+    J: Fn(&Vector<T>) -> Matrix<T>,
 {
     pub fn new(f: F, j: J) -> Self {
         Self {
@@ -78,13 +86,13 @@ where
         self
     }
 
-    pub fn with_maxit(mut self, maxit: usize) -> Self {
+    pub fn with_maxit(mut self, maxit: u32) -> Self {
         self.maxit = maxit;
         self
     }
 
-    pub fn solve(&self, x0: DVector<Complex<T>>) -> NewtonRaphsonResult<DVector<Complex<T>>> {
-        let mut i = 0;
+    pub fn solve(&self, x0: Vector<T>) -> Result<NewtonRaphsonResult<T>, NewtonRaphsonError> {
+        let mut i = 0_u32;
         let mut x = x0.clone();
 
         while i < self.maxit {
@@ -123,7 +131,7 @@ where
         if i >= self.maxit {
             Err(NewtonRaphsonError::MaximumIterationsReached)
         } else {
-            Ok(x)
+            Ok(NewtonRaphsonResult { x, iteration: i })
         }
     }
 }
@@ -164,7 +172,7 @@ mod tests {
         let newton = NewtonRaphson::new(f_wikipedia, j_wikipedia);
 
         match newton.solve(z0) {
-            Ok(z) => {
+            Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
                 let fz = f_wikipedia(&z).apply_norm(&UniformNorm);
                 println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
                 assert!(fz < NEWTON_DEFAULT_RTOL);
@@ -183,7 +191,7 @@ mod tests {
         let newton = NewtonRaphson::new(f, j);
 
         match newton.solve(z0) {
-            Ok(z) => {
+            Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
                 let fz = f(&z).apply_norm(&UniformNorm);
                 println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
                 assert!(fz < NEWTON_DEFAULT_RTOL);
@@ -202,7 +210,7 @@ mod tests {
         let newton = NewtonRaphson::new(f, j).with_maxit(16);
 
         match newton.solve(z0) {
-            Ok(z) => {
+            Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
                 let fz = f(&z).apply_norm(&UniformNorm);
                 println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
                 assert!(fz < NEWTON_DEFAULT_RTOL);
@@ -266,7 +274,7 @@ mod tests {
         let newton = NewtonRaphson::new(f, j);
 
         match newton.solve(z0) {
-            Ok(z) => {
+            Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
                 let fz = f(&z).apply_norm(&UniformNorm);
                 println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
                 assert!(fz < NEWTON_DEFAULT_RTOL);
@@ -284,7 +292,7 @@ mod tests {
         let newton = NewtonRaphson::new(f, j);
 
         match newton.solve(z0) {
-            Ok(z) => {
+            Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
                 let fz = f(&z).apply_norm(&UniformNorm);
                 println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
                 assert!(fz < NEWTON_DEFAULT_RTOL);
@@ -310,7 +318,7 @@ mod tests {
         let newton = NewtonRaphson::new(f, j).with_maxit(512);
 
         match newton.solve(z0) {
-            Ok(z) => {
+            Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
                 let fz = f(&z).apply_norm(&UniformNorm);
                 println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
                 assert!(fz < NEWTON_DEFAULT_RTOL);
@@ -344,9 +352,12 @@ mod tests {
         let newton = NewtonRaphson::new(f, j);
 
         match newton.solve(z0) {
-            Ok(z) => {
+            Ok(NewtonRaphsonResult { x: z, iteration: n }) => {
                 let fz = f(&z).apply_norm(&UniformNorm);
-                println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
+                println!(
+                    "[{}] zstar {}f(z) {:e} rtol {:e}",
+                    n, z, fz, NEWTON_DEFAULT_RTOL
+                );
                 assert!(fz < NEWTON_DEFAULT_RTOL);
             }
             Err(_) => unreachable!(),
