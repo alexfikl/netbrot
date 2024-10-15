@@ -74,6 +74,12 @@ windows:		## Cross compile for windows
 	cargo build --target x86_64-pc-windows-gnu --locked --all-features --release
 .PHONY: windows
 
+purge:			## Remove all generated files
+	rm -rf target
+	rm -rf .ruff_cache
+	rm -rf data/*.png
+.PHONY: purge
+
 # }}}
 
 # {{{ gallery

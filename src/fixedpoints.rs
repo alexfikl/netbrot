@@ -5,9 +5,9 @@ use num::complex::{c64, Complex64};
 use rand::Rng;
 
 use crate::iterate::{
-    netbrot_repeat, netbrot_repeat_eigenvalues, netbrot_repeat_prime, Matrix, Netbrot, Vector,
+    netbrot_repeat, netbrot_repeat_prime, Matrix, Netbrot, Vector,
 };
-use crate::newton::NewtonRhapson;
+use crate::newton::NewtonRaphson;
 
 /// {{{ find_unique_fixed_points
 
@@ -104,7 +104,7 @@ pub fn find_fixed_points_by_newton(
 
     let f = |z: &Vector| netbrot_repeat_fp(&brot.mat, z, brot.c, nperiod);
     let j = |z: &Vector| netbrot_repeat_prime_fp(&brot.mat, z, brot.c, nperiod);
-    let solver = NewtonRhapson::new(f, j).with_rtol(1.0e-8).with_maxit(512);
+    let solver = NewtonRaphson::new(f, j).with_rtol(1.0e-8).with_maxit(512);
 
     for _ in 0..npoints {
         let z0 = generate_random_points_on_sphere(&mut rng, ndim, radius);
