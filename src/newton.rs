@@ -107,6 +107,8 @@ where
                 break;
             }
 
+            println!("[{:4}] error {}", i, bnorm);
+
             let jac = (self.j)(&x);
 
             // Solve the standard Newton equation
@@ -146,7 +148,7 @@ mod tests {
     use super::*;
 
     use nalgebra::{dmatrix, dvector};
-    use num::complex::c64;
+    use num::complex::{c64, Complex64};
 
     use crate::netbrot::{Matrix, Vector};
 
@@ -361,9 +363,49 @@ mod tests {
                 );
                 assert!(fz < NEWTON_DEFAULT_RTOL);
             }
-            Err(_) => unreachable!(),
+            Err(e) => panic!("Solution not found! {}", e),
         };
     }
+
+    fn f_netbrot_period1(z: &Vector, c: Complex64) -> Vector {
+        let mat = dmatrix![c64(1.0, 0.0), c64(0.8, 0.0);
+                           c64(1.0, 0.0), c64(-0.5, 0.0)];
+        let matz: Vector = Vector::from_iterator(2, (mat * z).iter().map(|z_i| z_i * z_i));
+
+        matz.add_scalar(c) - z
+    }
+
+    fn j_netbrot_period1(z: &Vector, _c: Complex64) -> Matrix {
+        let mat = dmatrix![c64(1.0, 0.0), c64(0.8, 0.0);
+                           c64(1.0, 0.0), c64(-0.5, 0.0)];
+        let matz = (&mat * z) * c64(2.0, 0.0);
+
+        Matrix::from_diagonal(&matz) * mat
+    }
+
+    #[test]
+    fn test_netbrot_period1() {
+        let f = |z: &Vector| f_netbrot_period1(z, c64(0.0, 0.0));
+        let j = |z: &Vector| j_netbrot_period1(z, c64(0.0, 0.0));
+
+        let z0 = dvector![c64(-0.5, 0.0), c64(0.8, 1.0)];
+        let newton = NewtonRaphson::new(f, j);
+
+        match newton.solve(z0) {
+            Ok(NewtonRaphsonResult { x: z, iteration: n }) => {
+                let fz = f(&z).apply_norm(&UniformNorm);
+                println!(
+                    "[{}] zstar {}f(z) {:e} rtol {:e}",
+                    n, z, fz, NEWTON_DEFAULT_RTOL
+                );
+                assert!(fz < NEWTON_DEFAULT_RTOL);
+            }
+            Err(e) => panic!("Solution not found! {}", e),
+        };
+    }
+
+    #[test]
+    fn test_netbrot_period2() {}
 }
 
 // }}}
