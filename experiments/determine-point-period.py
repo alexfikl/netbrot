@@ -257,12 +257,14 @@ def main(
 
     log.info("Found %d out of %d roots", len(fixedpoints), nunique)
     for i, z_i in enumerate(fixedpoints):
-        log.info(
-            "z^*_{%d}: (error %.8e) %s",
-            i,
-            la.norm(netbrot_fp(z_i, mat, c, nperiod)),
-            z_i,
-        )
+        error = la.norm(netbrot_fp(z_i, mat, c, nperiod))
+        df = netbrot_prime(z_i, mat, c, nperiod)
+        lambdas = la.eigvals(df)
+
+        log.info("z^*[%2d]: %s", i, z_i)
+        log.info("       : error %.8e", error)
+        log.info("       : lambda %s", lambdas)
+        log.info("       : stable %s", np.max(np.abs(lambdas)) < 1.0 + eps)
 
     # }}}
 
