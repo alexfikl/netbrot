@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Any, NamedTuple
+from typing import Any, Iterator
 
 import numpy as np
 import numpy.linalg as la
@@ -44,9 +44,6 @@ def set_recommended_matplotlib() -> None:
             "grid.which": "both",
             # NOTE: preserve existing colors (the ones in "science" are ugly)
             "prop_cycle": mp.rcParams["axes.prop_cycle"],
-        },
-        "image": {
-            "cmap": "binary",
         },
         "xtick": {"labelsize": 20, "direction": "inout"},
         "ytick": {"labelsize": 20, "direction": "inout"},
@@ -121,41 +118,52 @@ def netbrot_prime_lsq(z0: Array, mat: Matrix, c: complex, n: int) -> Array:
 # {{{ main
 
 
-class FixedPointResult(NamedTuple):
-    x: Array
-    success: bool
-    message: str
+def divisors(n: int) -> Iterator[int]:
+    if n <= 1:
+        return
+
+    sqrt_n = int(np.sqrt(n))
+
+    for i in range(1, sqrt_n + 1):
+        if n % i == 0:
+            yield i
 
 
-def find_unique_fixed_points(
-    fixedpoints: Array, mat: Array, c: complex, nperiod: int, *, eps: float = 1.0e-15
-) -> Array:
-    _, npoints = fixedpoints.shape
-    indices = []
+def random_sphere(rng: np.random.Generator, ndim: int) -> Array:
+    zs = rng.uniform(0.0, 1.0, size=(2 * ndim,))
+    factor = rng.uniform(0.0, 1.0)
+    zs = factor ** (1.0 / ndim) * zs / la.norm(zs)
 
-    for i in range(npoints):
-        isin = any(
-            la.norm(fixedpoints[:, i] - fixedpoints[:, j]) < eps for j in indices
-        )
-        if isin:
-            continue
+    return zs[:ndim] + 1j * zs[ndim:]
 
-        is_lower_period = any(
-            la.norm(netbrot_fp(fixedpoints[:, i], mat, c, j)) < eps
-            for j in range(1, nperiod)
-        )
 
-        if is_lower_period:
-            continue
+def is_unique_fixed_point(
+    fixedpoints: list[Array],
+    z: Array,
+    mat: Array,
+    c: complex,
+    nperiod: int,
+    *,
+    eps: float = 1.0e-15,
+) -> bool:
+    # 1. Skip point if it is not a fixed point
+    is_fp = la.norm(netbrot_fp(z, mat, c, nperiod)) < eps
+    if not is_fp:
+        return False
 
-        is_fp = la.norm(netbrot_fp(fixedpoints[:, i], mat, c, nperiod)) < eps
-        if not is_fp:
-            continue
+    # 2. Skip point if it is already in the list
+    isin = any(la.norm(z - zj) < eps for zj in fixedpoints)
+    if isin:
+        return False
 
-        indices.append(i)
+    # 3. Skip point if it is also of a lower period
+    is_lower_period = any(
+        la.norm(netbrot_fp(z, mat, c, j)) < eps for j in range(1, nperiod)
+    )
+    if is_lower_period:  # noqa: SIM103
+        return False
 
-    log.info("indices: %s", indices)
-    return np.array(indices)
+    return True
 
 
 def main(
@@ -166,6 +174,8 @@ def main(
     npoints: int = 2048,
     check_gradients: bool = False,
 ) -> int:
+    rng = np.random.default_rng(seed=42)
+
     # {{{ read in matrix
 
     import json
@@ -184,41 +194,11 @@ def main(
     mat = np.array([complex(*e) for e in elements]).reshape(*shape).T
     ndim = shape[1]
 
-    # }}}
+    nbezout = (2**ndim) ** nperiod
+    log.info("Bezout number: %d", nbezout)
 
-    # {{{ generate a cloud of points in the escape sphere (?)
-
-    rng = np.random.default_rng(seed=42)
-    zs = rng.uniform(0, 1, (2 * ndim, npoints))
-    factor = rng.uniform(0, 1, (1, npoints))
-    zs = escape_radius * factor ** (1 / ndim) * zs / la.norm(zs, axis=0)
-    zs = zs[:ndim] + 1j * zs[ndim:]
-
-    assert np.all(la.norm(zs, axis=0) <= escape_radius)
-
-    # }}}
-
-    # {{{ check gradients
-
-    if check_gradients:
-        jacz = netbrot_prime(zs, mat, c, nperiod)
-
-        eps = 1.0e-7
-        jacz_fd = np.empty_like(jacz)
-        for m in range(npoints):
-            df = netbrot(zs[:, m], mat, c, nperiod)
-
-            for i in range(ndim):
-                for j in range(ndim):
-                    # FIXME: is this right for complex functions?
-                    e_j = np.zeros_like(df)
-                    e_j[j] = eps
-                    dfeps = netbrot(zs[:, m] + e_j, mat, c, nperiod)
-
-                    # compute J_{ij} = d f_i / d z_j
-                    jacz_fd[i, j, m] = (dfeps[i] - df[i]) / eps
-
-        print(np.max(la.norm(jacz - jacz_fd, axis=(0, 1))))
+    nunique = nbezout - sum(((2**ndim) ** j for j in divisors(nperiod)), 0)
+    log.info("Unique solutions: %d", nunique)
 
     # }}}
 
@@ -227,86 +207,56 @@ def main(
     import scipy.optimize as so
 
     eps = 1.0e-5
-    fixedpoints = np.empty_like(zs)
-    for m in range(npoints):
-        # try:
-        #     result = so.fixed_point(
-        #         netbrot,
-        #         zs[:, m],
-        #         args=(mat, c, nperiod),
-        #         xtol=eps,
-        #         maxiter=10000,
-        #         method="del2",
-        #     )
-        #     result = FixedPointResult(
-        #         x=result, success=True, message="Reached desired xtol"
-        #     )
-        # except RuntimeError:
-        #     result = FixedPointResult(
-        #         x=np.zeros_like(zs[:, m]),
-        #         success=False,
-        #         message="Failed to converge after maxiter iterations",
-        #     )
+    maxit = 10_000
+    ntries = 0
 
+    fixedpoints = []
+    while ntries < npoints:
+        zs = escape_radius * random_sphere(rng, ndim)
         result = so.root(
             netbrot_fp,
-            zs[:, m],
+            zs,
             args=(mat, c, nperiod),
             # NOTE: working methods:
             #   broyden1, broyden2
-            method="broyden2",
+            method="broyden1",
             jac=netbrot_prime_fp,
-            # tol=eps,
-            options={"maxfev": 10000, "fatol": eps, "xatol": eps, "maxiter": 10000},
+            options={
+                "maxfev": maxit,
+                "fatol": eps / 10,
+                "xatol": eps / 10,
+                "maxiter": maxit,
+            },
+        )
+        ntries += 1
+
+        if not result.success:
+            continue
+
+        zstar = result.x
+        log.info(
+            "[%04d/%02d] Message: %s (z0 %s)",
+            ntries,
+            len(fixedpoints),
+            result.message,
+            zs,
+        )
+        log.info("                zstar %s", zstar)
+        log.info(
+            "                norm %.8e error %.8e jac %.8e",
+            la.norm(result.x),
+            la.norm(netbrot_fp(zstar, mat, c, nperiod)),
+            0.0,  # la.norm(result.jac),
         )
 
-        # result = so.least_squares(
-        #     netbrot_fp,
-        #     zs[:, m],
-        #     args=(mat, c, nperiod),
-        #     jac=netbrot_prime_fp,
-        #     bounds=(-escape_radius, escape_radius),
-        #     method="lm",
-        #     ftol=eps,
-        # )
+        if is_unique_fixed_point(fixedpoints, zstar, mat, c, nperiod, eps=eps):
+            fixedpoints.append(np.real_if_close(zstar, tol=eps))
 
-        # result = so.minimize(
-        #     netbrot_lsq,
-        #     zs[:, m],
-        #     args=(mat, c, nperiod),
-        #     jac=netbrot_prime_lsq,
-        #     method="",
-        #     tol=eps,
-        # )
+        if len(fixedpoints) == nunique:
+            break
 
-        # assert result.success, result
-        fixedpoints[:, m] = result.x
-
-        log.info("[%04d] Message: %s (z0 %s)", m, result.message, zs[:, m])
-        if result.success:
-            log.info("                zstar %s", result.x)
-            log.info(
-                "                norm %.8e error %.8e jac %.8e",
-                la.norm(result.x),
-                la.norm(result.x - netbrot(result.x, mat, c, nperiod)),
-                0.0,  # la.norm(result.jac),
-            )
-
-    # }}}
-
-    import matplotlib.pyplot as mp
-
-    set_recommended_matplotlib()
-    fixednorms = la.norm(fixedpoints, axis=0)
-    fixedpoints = fixedpoints[:, fixednorms < 2 * escape_radius]
-
-    indices = find_unique_fixed_points(fixedpoints, mat, c, nperiod, eps=10 * eps)
-    fixednorms = la.norm(fixedpoints, axis=0)
-    fixederrors = la.norm(netbrot_fp(fixedpoints, mat, c, nperiod), axis=0)
-    fixederrors = np.maximum(fixederrors, 1.0e-16)
-
-    for i, index in enumerate(indices):
-        z_i = fixedpoints[:, index]
+    log.info("Found %d out of %d roots", len(fixedpoints), nunique)
+    for i, z_i in enumerate(fixedpoints):
         log.info(
             "z^*_{%d}: (error %.8e) %s",
             i,
@@ -314,39 +264,27 @@ def main(
             z_i,
         )
 
-    # {{{ plot magnitudes
+    # }}}
 
+    import matplotlib.pyplot as mp
+
+    set_recommended_matplotlib()
     fig = mp.figure()
     ax = fig.gca()
 
-    ax.plot(fixednorms)
-    ax.plot(indices, fixednorms[indices], "o")
-    ax.set_ylabel(r"$\|\mathbf{z}^*\|$")
+    fp = np.array(fixedpoints).T
+    error = la.norm(fp.reshape(ndim, -1, 1) - fp.reshape(ndim, 1, -1), axis=0)
+    assert error.shape == (fp.shape[1], fp.shape[1])
 
-    outfile = filename.parent / f"{filename.stem}-fixedpoints"
+    im = ax.imshow(np.log10(error + eps))
+    ax.set_title(r"$\log_{10} \|z_i^* - z_j^*\|_2$")
+    fig.colorbar(im, ax=ax)
+
+    outfile = filename.parent / f"{filename.stem}-error"
     fig.savefig(outfile)
     mp.close(fig)
 
-    log.info("Saved output file for 'c=%s' to '%s'.", c, outfile)
-
-    # }}}
-
-    # {{{ plot errors
-
-    fig = mp.figure()
-    ax = fig.gca()
-
-    ax.semilogy(fixederrors)
-    ax.semilogy(indices, fixederrors[indices], "o")
-    ax.set_ylabel(r"$\|\mathbf{f}^n(\mathbf{z}^*)\|$")
-
-    outfile = filename.parent / f"{filename.stem}-fixederrors"
-    fig.savefig(outfile)
-    mp.close(fig)
-
-    log.info("Saved output file for 'c=%s' to '%s'.", c, outfile)
-
-    # }}}
+    log.info("Saved output for 'c=%s' to '%s'.", c, outfile)
 
 
 # }}}
