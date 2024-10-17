@@ -11,6 +11,7 @@ nalgebra = { "version" = "0.33", "features" = ["default", "serde-serialize"] }
 num = { "version" = "0.4" }
 num-traits = { "version" = "0.2" }
 rand = { "version" = "0.8" }
+rand_distr = { "version" = "0.4" }
 rayon = { "version" = "1.10" }
 serde = { "version" = "1.0", "features" = ["derive"]}
 serde_json = { "version" = "1.0" }
