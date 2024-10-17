@@ -92,7 +92,7 @@ where
         self
     }
 
-    pub fn solve(&self, x0: Vector<T>) -> Result<NewtonRaphsonResult<T>, NewtonRaphsonError> {
+    pub fn solve(&self, x0: &Vector<T>) -> Result<NewtonRaphsonResult<T>, NewtonRaphsonError> {
         let mut i = 0_u32;
         let mut x = x0.clone();
 
@@ -107,7 +107,7 @@ where
                 break;
             }
 
-            println!("[{:4}] error {}", i, bnorm);
+            // println!("[{:4}] error {}", i, bnorm);
 
             let jac = (self.j)(&x);
 
@@ -174,7 +174,7 @@ mod tests {
         let z0 = dvector![c64(1.0, 0.0), c64(1.0, 0.0)];
         let newton = NewtonRaphson::new(f_wikipedia, j_wikipedia);
 
-        match newton.solve(z0) {
+        match newton.solve(&z0) {
             Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
                 let fz = f_wikipedia(&z).apply_norm(&UniformNorm);
                 println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
@@ -193,7 +193,7 @@ mod tests {
         let z0 = dvector![c64(1.0, 0.0)];
         let newton = NewtonRaphson::new(f, j);
 
-        match newton.solve(z0) {
+        match newton.solve(&z0) {
             Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
                 let fz = f(&z).apply_norm(&UniformNorm);
                 println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
@@ -212,7 +212,7 @@ mod tests {
         let z0 = dvector![c64(0.15, 0.0)];
         let newton = NewtonRaphson::new(f, j).with_maxit(16);
 
-        match newton.solve(z0) {
+        match newton.solve(&z0) {
             Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
                 let fz = f(&z).apply_norm(&UniformNorm);
                 println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
@@ -276,7 +276,7 @@ mod tests {
         let z0 = Vector::from_element(5, c64(-1.0, 0.0));
         let newton = NewtonRaphson::new(f, j);
 
-        match newton.solve(z0) {
+        match newton.solve(&z0) {
             Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
                 let fz = f(&z).apply_norm(&UniformNorm);
                 println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
@@ -294,7 +294,7 @@ mod tests {
         let z0 = Vector::from_element(5, c64(-1.0, 0.0));
         let newton = NewtonRaphson::new(f, j);
 
-        match newton.solve(z0) {
+        match newton.solve(&z0) {
             Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
                 let fz = f(&z).apply_norm(&UniformNorm);
                 println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
@@ -320,7 +320,7 @@ mod tests {
         let z0 = dvector![c64(-1.2, 0.0), c64(1.0, 0.0)];
         let newton = NewtonRaphson::new(f, j).with_maxit(512);
 
-        match newton.solve(z0) {
+        match newton.solve(&z0) {
             Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
                 let fz = f(&z).apply_norm(&UniformNorm);
                 println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
@@ -354,7 +354,7 @@ mod tests {
         let z0 = dvector![c64(15.0, 0.0), c64(-2.0, 0.0)];
         let newton = NewtonRaphson::new(f, j);
 
-        match newton.solve(z0) {
+        match newton.solve(&z0) {
             Ok(NewtonRaphsonResult { x: z, iteration: n }) => {
                 let fz = f(&z).apply_norm(&UniformNorm);
                 println!(
@@ -391,7 +391,7 @@ mod tests {
         let z0 = dvector![c64(-0.5, 0.0), c64(0.8, 1.0)];
         let newton = NewtonRaphson::new(f, j);
 
-        match newton.solve(z0) {
+        match newton.solve(&z0) {
             Ok(NewtonRaphsonResult { x: z, iteration: n }) => {
                 let fz = f(&z).apply_norm(&UniformNorm);
                 println!(
@@ -404,8 +404,35 @@ mod tests {
         };
     }
 
+    fn f_netbrot_period2(z: &Vector, c: Complex64) -> Vector {
+        f_netbrot_period1(&f_netbrot_period1(z, c), c)
+    }
+
+    fn j_netbrot_period2(z: &Vector, c: Complex64) -> Matrix {
+        let fz = f_netbrot_period1(z, c);
+        j_netbrot_period1(&fz, c) * j_netbrot_period1(z, c)
+    }
+
     #[test]
-    fn test_netbrot_period2() {}
+    fn test_netbrot_period2() {
+        let f = |z: &Vector| f_netbrot_period2(z, c64(0.0, 0.0));
+        let j = |z: &Vector| j_netbrot_period2(z, c64(0.0, 0.0));
+
+        let z0 = dvector![c64(-0.5, 0.0), c64(0.8, 1.0)];
+        let newton = NewtonRaphson::new(f, j);
+
+        match newton.solve(&z0) {
+            Ok(NewtonRaphsonResult { x: z, iteration: n }) => {
+                let fz = f(&z).apply_norm(&UniformNorm);
+                println!(
+                    "[{}] zstar {}f(z) {:e} rtol {:e}",
+                    n, z, fz, NEWTON_DEFAULT_RTOL
+                );
+                assert!(fz < NEWTON_DEFAULT_RTOL);
+            }
+            Err(e) => panic!("Solution not found! {}", e),
+        };
+    }
 }
 
 // }}}
