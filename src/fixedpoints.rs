@@ -74,6 +74,16 @@ pub fn generate_random_points_in_ball<R: Rng + ?Sized>(
     result
 }
 
+#[allow(dead_code)]
+pub fn generate_random_vector<R: Rng + ?Sized>(rng: &mut R, ndim: usize) -> Vector {
+    let components: Vec<f64> = (0..2 * ndim).map(|_| rng.gen()).collect();
+
+    Vector::from_iterator(
+        ndim,
+        (0..ndim).map(|i| c64(components[i], components[i + ndim])),
+    )
+}
+
 // }}}
 
 /// {{{ find_unique_fixed_points
@@ -182,6 +192,8 @@ pub fn find_fixed_points_by_newton(
 mod tests {
     use super::*;
 
+    use nalgebra::{dmatrix, dvector};
+
     #[test]
     fn test_bezout_number() {
         assert_eq!(bezout_number(2, 1), 4);
@@ -212,6 +224,96 @@ mod tests {
                 // println!("ndim {} z0 {} radius {}", ndim, z0.norm(), radius);
                 assert!(z0.norm() < radius);
             }
+        }
+    }
+
+    #[test]
+    fn test_compose_fp() {
+        let ndim = 2;
+        let maxit = 512;
+        let escape_radius = 5.0;
+
+        let mat = dmatrix![c64(1.0, 0.0), c64(0.8, 0.0); c64(1.0, 0.0), c64(-0.5, 0.0)];
+        let brot = Netbrot::new(&mat, maxit, escape_radius);
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..32 {
+            let z = generate_random_points_in_ball(&mut rng, ndim, escape_radius);
+
+            let f0 = netbrot_compose_fp(&brot, &z, 1);
+            let f1 = brot.evaluate(&z) - &z;
+            assert!((&f0 - &f1).norm() < 1.0e-15 * f0.norm());
+
+            let j0 = netbrot_compose_prime_fp(&brot, &z, 1);
+            let j1 = brot.jacobian(&z) - Matrix::identity(ndim, ndim);
+            assert!((&j0 - &j1).norm() < 1.0e-15 * j0.norm());
+        }
+    }
+
+    #[test]
+    fn test_find_fixed_points_by_newton() {
+        let ndim = 2_usize;
+        let maxit = 512_usize;
+        let escape_radius = 3.4742662001265163_f64;
+        let eps = 1.0e-8_f64;
+
+        let mat = dmatrix![c64(1.0, 0.0), c64(0.8, 0.0); c64(1.0, 0.0), c64(-0.5, 0.0)];
+        let brot = Netbrot::new(&mat, maxit, escape_radius);
+
+        // NOTE: Obtained from Mathematica to 15 digits
+        let fp = [
+            dvector![c64(0.0, 0.0), c64(0.0, 0.0)],
+            dvector![c64(0.585929683557274, 0.0), c64(0.224413444208041, 0.0)],
+            dvector![
+                c64(-0.618408628760886, -0.002964957123238),
+                c64(0.775367242393021, -0.979283648571905)
+            ],
+            dvector![
+                c64(-0.618408628760886, 0.002964957123238),
+                c64(0.775367242393021, 0.979283648571905)
+            ],
+        ];
+
+        // check that the roots are actually roots
+        for z in fp.iter() {
+            assert!(z.norm() < escape_radius);
+            assert!(netbrot_compose_fp(&brot, z, 1).norm() < 1.0e-14);
+        }
+
+        // check that a small perturbation of the roots works
+        let f = |z: &Vector| netbrot_compose_fp(&brot, z, 1);
+        let j = |z: &Vector| netbrot_compose_prime_fp(&brot, z, 1);
+        let solver = NewtonRaphson::new(f, j)
+            .with_rtol(eps / 10.0)
+            .with_maxit(512);
+
+        let mut rng = rand::thread_rng();
+        for z in fp.iter() {
+            let zeps = z + generate_random_vector(&mut rng, ndim).scale(0.1);
+
+            match solver.solve(&zeps) {
+                Ok(NewtonRaphsonResult {
+                    x: zstar,
+                    iteration: _,
+                }) => {
+                    println!("z {} zeps {} zstar {}", z, zeps, zstar);
+                    assert!((zstar - z).norm() < 10.0 * eps);
+                }
+                Err(_) => unreachable!(),
+            }
+        }
+
+        // check the main routine with random points
+        let fp_est = find_fixed_points_by_newton(&brot, 1, 1024, eps);
+        for z in fp_est.iter() {
+            assert!(z.norm() < escape_radius);
+            assert!(netbrot_compose_fp(&brot, z, 1).norm() < eps);
+        }
+
+        for z_est in fp_est {
+            let found = fp.iter().any(|z_j| (&z_est - z_j).norm() < eps);
+            assert!(found);
         }
     }
 }
