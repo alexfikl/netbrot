@@ -37,6 +37,33 @@ impl Netbrot {
             escape_radius_squared: escape_radius * escape_radius,
         }
     }
+
+    pub fn evaluate(&self, z: &Vector) -> Vector {
+        let mut out = z.clone_owned();
+        self.evaluate_to(z, &mut out);
+
+        out
+    }
+
+    pub fn evaluate_to(&self, z: &Vector, out: &mut Vector) {
+        self.mat.mul_to(z, out);
+        for e in out.iter_mut() {
+            *e = *e * *e + self.c;
+        }
+    }
+
+    pub fn jacobian(&self, z: &Vector) -> Matrix {
+        // https://github.com/dimforge/nalgebra/issues/1338
+        let matz = (&self.mat * z) * c64(2.0, 0.0);
+
+        Matrix::from_diagonal(&matz) * &self.mat
+    }
+
+    #[allow(dead_code)]
+    pub fn jacobian_to(&self, z: &Vector, out: &mut Matrix) {
+        let matz = (&self.mat * z) * c64(2.0, 0.0);
+        Matrix::from_diagonal(&matz).mul_to(&self.mat, out);
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -49,95 +76,6 @@ pub struct EscapeResult {
 
 /// Period of a point, if it does not escape.
 type PeriodResult = Option<usize>;
-
-// }}}
-
-// {{{ maps
-
-/// Compute the *n* times composition of the Netbrot quadratic map.
-///
-/// This just computes the composition and does not iterate to an escape.
-#[allow(dead_code)]
-pub fn netbrot_repeat(mat: &Matrix, z0: &Vector, c: Complex64, n: u32) -> Vector {
-    let mut z = z0.clone();
-    if n >= 1 {
-        let mut matz = z0.clone();
-
-        for _ in 0..n {
-            z = matz.component_mul(&matz).add_scalar(c);
-            mat.mul_to(&z, &mut matz);
-        }
-    }
-
-    z
-}
-
-/// Compute the Jacobian of the Netbrot quadratic map.
-///
-/// The Jacobian is given by
-///
-/// $$
-///     J_f(z) = 2 diag(A z) A
-/// $$
-///
-/// where $diag(x)$ just gives a matrix with *x* on the diagonal.
-#[allow(dead_code)]
-pub fn netbrot_prime(mat: &Matrix, z: &Vector, jac: &mut Matrix) {
-    let mut matz = z.clone();
-    mat.mul_to(z, &mut matz);
-
-    let n = mat.nrows();
-    for i in 0..n {
-        for j in 0..n {
-            jac[(i, j)] = 2.0 * mat[(i, j)] * matz[i];
-        }
-    }
-}
-
-/// Compute the Jacobian of the Netbrot composition map.
-///
-/// The Jacobian is given by the chain rule
-///
-/// $$
-///     J_{f^n}(z) = J_f(f^{n - 1}(z)) \circ \cdots \circ J_f(z)
-/// $$
-///
-/// We compute this by going backwards and constructing both the Jacobian and
-/// $f^n(z)$ iteratively.
-#[allow(dead_code)]
-pub fn netbrot_repeat_prime(mat: &Matrix, z0: &Vector, c: Complex64, n: u32) -> Matrix {
-    let mut z = z0.clone();
-    let mut matz = z.clone();
-
-    let mut jac = mat.clone();
-    let mut jac_n = mat.clone();
-    let mut tmp = mat.clone();
-
-    // Compute J_f(z)
-    netbrot_prime(mat, &z, &mut jac);
-
-    for _ in 1..n {
-        // Compute f^n(z)
-        z = matz.component_mul(&matz).add_scalar(c);
-        mat.mul_to(&z, &mut matz);
-
-        // Compute J_f(f^n(z))
-        netbrot_prime(mat, &z, &mut jac_n);
-
-        // Left multiply into J_{f^n}
-        jac_n.mul_to(&jac, &mut tmp);
-        jac.copy_from(&tmp);
-    }
-
-    jac
-}
-
-/// Compute the eigenvalues of the Jacobian of the *n* times composition.
-#[allow(dead_code)]
-pub fn netbrot_repeat_eigenvalues(mat: &Matrix, z: &Vector, c: Complex64, n: u32) -> Vector {
-    let jac = netbrot_repeat_prime(mat, z, c, n);
-    jac.eigenvalues().unwrap()
-}
 
 // }}}
 
@@ -227,6 +165,99 @@ pub fn netbrot_orbit_period(brot: &Netbrot) -> PeriodResult {
             iteration: Some(_),
             z: _,
         } => None,
+    }
+}
+
+// }}}
+
+// {{{ tests
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use nalgebra::dmatrix;
+    use num::complex::c64;
+
+    use crate::fixedpoints::generate_random_points_in_ball;
+
+    #[test]
+    fn test_zero_escape() {
+        let maxit = 512;
+        let escape_radius = 5.0;
+        let mat = dmatrix![c64(1.0, 0.0), c64(0.8, 0.0); c64(1.0, 0.0), c64(-0.5, 0.0)];
+
+        let brot = Netbrot::new(&mat, maxit, escape_radius);
+        let mut z = brot.z0.clone_owned();
+        let mut znext = z.clone_owned();
+
+        for _ in 0..brot.maxit {
+            brot.evaluate_to(&z, &mut znext);
+            z.copy_from(&znext);
+
+            let znext_copy = brot.evaluate(&z);
+            assert!((&znext - &znext_copy).norm() < 1.0e-15);
+        }
+
+        // c = 0 should not escape for this fractal
+        assert!(z.norm_squared() < brot.escape_radius_squared);
+    }
+
+    #[test]
+    fn test_jacobian_vs_finite_difference() {
+        let ndim = 2;
+        let maxit = 512;
+        let escape_radius = 5.0;
+
+        let mat = dmatrix![c64(1.0, 0.0), c64(0.8, 0.0); c64(1.0, 0.0), c64(-0.5, 0.0)];
+        let brot = Netbrot::new(&mat, maxit, escape_radius);
+
+        let mut fz = brot.z0.clone_owned();
+        let mut fz_eps = brot.z0.clone_owned();
+
+        let mut jac = mat.clone_owned();
+        let mut jac_est = mat.clone_owned();
+        let mut rng = rand::thread_rng();
+
+        let basis = Matrix::identity(ndim, ndim);
+        let mut err = DVector::<f64>::zeros(7);
+        let eps = DVector::<f64>::from_fn(err.len(), |i, _| 10.0_f64.powi(-(i as i32)));
+
+        for _ in 0..32 {
+            let z = generate_random_points_in_ball(&mut rng, ndim, escape_radius);
+
+            // evaluate
+            brot.evaluate_to(&z, &mut fz);
+            brot.jacobian_to(&z, &mut jac);
+
+            let jac_norm = jac.norm();
+            let jac_copy = brot.jacobian(&z);
+            assert!((&jac - &jac_copy).norm() < 1.0e-15 * jac_norm);
+
+            // FIXME: copy this out into a little function? in newton.rs?
+            for n in 0..err.len() {
+                for j in 0..ndim {
+                    let z_eps = &z + basis.column(j).scale(eps[n]);
+                    brot.evaluate_to(&z_eps, &mut fz_eps);
+
+                    for i in 0..ndim {
+                        jac_est[(i, j)] = (fz_eps[i] - fz[i]) / eps[n];
+                    }
+                }
+
+                err[n] = (&jac - &jac_est).norm() / jac_norm;
+            }
+
+            let order = DVector::from_iterator(
+                err.len() - 1,
+                (0..err.len() - 1).map(|i| {
+                    (err[i + 1].log2() - err[i].log2()) / (eps[i + 1].log2() - eps[i].log2())
+                }),
+            );
+
+            println!("Order: {}", order.min());
+            assert!(order.min() > 0.9);
+        }
     }
 }
 
