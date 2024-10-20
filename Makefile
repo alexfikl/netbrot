@@ -59,7 +59,7 @@ clippy:			## Run clippy lint checks
 # {{{ building
 
 test:			## Run tests
-	cargo test --all-features
+	RUST_BACKTRACE=1 cargo test --all-features
 .PHONY: test
 
 build:			## Build the project in debug mode
