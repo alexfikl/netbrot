@@ -128,6 +128,7 @@ fn is_unique_fixed_point(
 
 // {{{ find_fixed_points_by_newton
 
+#[allow(dead_code)]
 pub fn find_fixed_points_by_newton(
     brot: &Netbrot,
     nperiod: u32,
