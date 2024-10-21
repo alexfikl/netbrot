@@ -10,19 +10,15 @@
 #![warn(rust_2018_idioms)]
 #![allow(elided_lifetimes_in_paths)]
 
-mod colorschemes;
-mod netbrot;
-mod render;
-
 use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 use std::time::Instant;
 
-use colorschemes::ColorType;
-use netbrot::Netbrot;
-use render::{pixel_to_point, render_orbit, render_period, RenderType};
+use netbrot::colorschemes::ColorType;
+use netbrot::iterate::Netbrot;
+use netbrot::render::{pixel_to_point, render_orbit, render_period, RenderType};
 
 use nalgebra::DMatrix;
 use num::complex::Complex64;

@@ -6,7 +6,7 @@ use image::Rgb;
 use num::complex::{c64, Complex64};
 
 use crate::colorschemes::{get_period_color, get_smooth_orbit_color, ColorType};
-use crate::netbrot::{netbrot_orbit, netbrot_orbit_period, EscapeResult, Netbrot};
+use crate::iterate::{netbrot_orbit, netbrot_orbit_period, EscapeResult, Netbrot};
 
 pub const MAX_PERIODS: usize = 20;
 pub const PERIOD_WINDOW: usize = 2 * MAX_PERIODS;
