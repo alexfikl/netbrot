@@ -174,3 +174,10 @@ pub fn get_period_color(color: ColorType, p: usize) -> Rgb<u8> {
         _ => panic!("Unsupported color type: {:?}", color),
     }
 }
+
+pub fn get_fixed_point_color(color: ColorType, magnitude: f64) -> Rgb<u8> {
+    match color {
+        ColorType::DefaultPalette => get_orbit_color(magnitude),
+        _ => panic!("Unsupported color type: {:?}", color),
+    }
+}

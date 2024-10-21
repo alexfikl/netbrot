@@ -5,7 +5,10 @@ use clap::ValueEnum;
 use image::{Rgb, RgbImage};
 use num::complex::{c64, Complex64};
 
-use crate::colorschemes::{get_period_color, get_smooth_orbit_color, ColorType};
+use crate::colorschemes::{
+    get_fixed_point_color, get_period_color, get_smooth_orbit_color, ColorType,
+};
+use crate::fixedpoints::{find_fixed_points_by_newton, fixed_point_type, FixedPointType};
 use crate::iterate::{netbrot_orbit, netbrot_orbit_period, EscapeResult, Netbrot};
 
 pub const MAX_PERIODS: usize = 20;
@@ -19,8 +22,8 @@ pub enum RenderType {
     Orbit,
     /// Plot periodicity for orbits that do not escape.
     Period,
-    // Fixed points
-    // Fixed,
+    /// Plot regions of attractive fixed points points.
+    Attractive,
 }
 
 pub struct Renderer {
@@ -157,6 +160,40 @@ pub fn render_period(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]) {
             let color = match netbrot_orbit_period(&local_brot) {
                 None => Rgb([255, 255, 255]),
                 Some(period) => get_period_color(color, period % MAX_PERIODS),
+            };
+
+            let index = row * resolution.0 + 3 * column;
+            pixels[index] = color[0];
+            pixels[index + 1] = color[1];
+            pixels[index + 2] = color[2];
+        }
+    }
+}
+
+// }}}
+
+// {{{ render attractive fixed points
+
+pub fn render_attractive_fixed_points(
+    renderer: &Renderer,
+    brot: &Netbrot,
+    pixels: &mut [u8],
+    period: u32,
+) {
+    let color = renderer.color_type;
+    let resolution = renderer.resolution;
+    assert!(pixels.len() == 3 * resolution.0 * resolution.1);
+
+    let mut local_brot = Netbrot::new(&brot.mat, brot.maxit, brot.escape_radius_squared.sqrt());
+
+    for row in 0..resolution.1 {
+        for column in 0..resolution.0 {
+            local_brot.c = renderer.pixel_to_point((column, row));
+            let fp = find_fixed_points_by_newton(&local_brot, period, 1024, 1.0e-8);
+
+            let color = match fixed_point_type(&local_brot, &fp, period) {
+                FixedPointType::Attractive(lambda) => get_fixed_point_color(color, lambda),
+                FixedPointType::Repulsive(_) => Rgb([255, 255, 255]),
             };
 
             let index = row * resolution.0 + 3 * column;

@@ -58,6 +58,10 @@ clippy:			## Run clippy lint checks
 
 # {{{ building
 
+test:			## Run tests
+	RUST_BACKTRACE=1 cargo test --all-features
+.PHONY: test
+
 build:			## Build the project in debug mode
 	cargo build --locked --all-features --verbose
 .PHONY: build
@@ -69,6 +73,12 @@ release:		## Build project in release mode
 windows:		## Cross compile for windows
 	cargo build --target x86_64-pc-windows-gnu --locked --all-features --release
 .PHONY: windows
+
+purge:			## Remove all generated files
+	rm -rf target
+	rm -rf .ruff_cache
+	rm -rf data/*.png
+.PHONY: purge
 
 # }}}
 
