@@ -31,20 +31,51 @@ fn unique_poly_solutions(ndim: u32, n: u32) -> u32 {
 
 /// {{{ functions
 
-fn netbrot_compose_fp(brot: &Netbrot, z: &Vector, n: u32) -> Vector {
+fn netbrot_compose(brot: &Netbrot, z: &Vector, n: u32) -> Vector {
     match n {
-        1 => brot.evaluate(z) - z,
-        _ => panic!("Unsupported composition: {}", n),
+        1 => brot.evaluate(z),
+        n => {
+            let mut result = brot.evaluate(z);
+            for _ in 0..n - 1 {
+                result = brot.evaluate(&result);
+            }
+
+            result
+        }
+    }
+}
+
+fn netbrot_compose_fp(brot: &Netbrot, z: &Vector, n: u32) -> Vector {
+    let mut result = netbrot_compose(brot, z, n);
+    result -= z;
+
+    result
+}
+
+fn netbrot_compose_prime(brot: &Netbrot, z: &Vector, n: u32) -> Matrix {
+    match n {
+        1 => brot.jacobian(z),
+        n => {
+            let mut result = brot.jacobian(z);
+            let mut fz = z.clone_owned();
+            for _ in 0..n - 1 {
+                fz = brot.evaluate(&fz);
+                result = brot.jacobian(&fz) * result;
+            }
+
+            result
+        }
     }
 }
 
 fn netbrot_compose_prime_fp(brot: &Netbrot, z: &Vector, n: u32) -> Matrix {
     let ndim = z.len();
-
-    match n {
-        1 => brot.jacobian(z) - Matrix::identity(ndim, ndim),
-        _ => panic!("Unsupported composition: {}", n),
+    let mut result = netbrot_compose_prime(brot, z, n);
+    for i in 0..ndim {
+        result[(i, i)] -= 1.0;
     }
+
+    result
 }
 
 /// }}}
@@ -239,6 +270,7 @@ mod tests {
 
         let mut rng = rand::thread_rng();
 
+        // period = 1
         for _ in 0..32 {
             let z = generate_random_points_in_ball(&mut rng, ndim, escape_radius);
 
@@ -248,6 +280,35 @@ mod tests {
 
             let j0 = netbrot_compose_prime_fp(&brot, &z, 1);
             let j1 = brot.jacobian(&z) - Matrix::identity(ndim, ndim);
+            assert!((&j0 - &j1).norm() < 1.0e-15 * j0.norm());
+        }
+
+        // period = 2
+        for _ in 0..32 {
+            let z = generate_random_points_in_ball(&mut rng, ndim, escape_radius);
+
+            let f0 = netbrot_compose_fp(&brot, &z, 2);
+            let f1 = brot.evaluate(&z);
+            let f2 = brot.evaluate(&f1) - &z;
+            assert!((&f0 - &f2).norm() < 1.0e-15 * f0.norm());
+
+            let j0 = netbrot_compose_prime_fp(&brot, &z, 2);
+            let j1 = brot.jacobian(&f1);
+            let j2 = j1 * brot.jacobian(&z) - Matrix::identity(ndim, ndim);
+            assert!((&j0 - &j2).norm() < 1.0e-15 * j0.norm());
+        }
+
+        // repeated composition + chain rule
+        for _ in 0..32 {
+            let z = generate_random_points_in_ball(&mut rng, ndim, escape_radius);
+
+            let f0 = netbrot_compose(&brot, &z, 5);
+            let f1 = netbrot_compose(&brot, &netbrot_compose(&brot, &z, 3), 2);
+            assert!((&f0 - &f1).norm() < 1.0e-15 * f0.norm());
+
+            let j0 = netbrot_compose_prime(&brot, &z, 5);
+            let f3 = netbrot_compose(&brot, &z, 3);
+            let j1 = netbrot_compose_prime(&brot, &f3, 2) * netbrot_compose_prime(&brot, &z, 3);
             assert!((&j0 - &j1).norm() < 1.0e-15 * j0.norm());
         }
     }
