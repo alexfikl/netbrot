@@ -5,7 +5,7 @@ use num::complex::c64;
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
 
-use crate::iterate::{netbrot_repeat, netbrot_repeat_prime, Matrix, Netbrot, Vector};
+use crate::iterate::{Matrix, Netbrot, Vector};
 use crate::newton::{NewtonRaphson, NewtonRaphsonResult};
 
 /// {{{ polynomial solutions

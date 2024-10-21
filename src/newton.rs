@@ -56,8 +56,8 @@ pub struct NewtonRaphson<T, F, J> {
     maxit: u32,
 }
 
-pub type Vector<T> = DVector<Complex<T>>;
-pub type Matrix<T> = DMatrix<Complex<T>>;
+type Vector<T> = DVector<Complex<T>>;
+type Matrix<T> = DMatrix<Complex<T>>;
 
 #[allow(dead_code)]
 pub struct NewtonRaphsonResult<T> {
@@ -150,7 +150,7 @@ mod tests {
     use nalgebra::{dmatrix, dvector};
     use num::complex::{c64, Complex64};
 
-    use crate::netbrot::{Matrix, Vector};
+    use crate::iterate::{Matrix, Vector};
 
     fn f_wikipedia(z: &Vector) -> Vector {
         dvector![
