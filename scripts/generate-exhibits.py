@@ -195,6 +195,7 @@ def convert_matlab(
 
 # }}}
 
+
 # {{{ random
 
 
@@ -277,7 +278,7 @@ def generate_equal_row(
     matrices = []
 
     if parametric:
-        omega = np.linspace(0.5, 1.0, exhibit_count)
+        omega = np.linspace(0.55, 1.0, exhibit_count)
         for n in range(exhibit_count):
             matrices.append(
                 np.array([
@@ -418,7 +419,11 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers()
 
     # convert matlab
-    parser_mat = subparsers.add_parser("convert", help="Convert from MATLAB .mat file")
+    parser_mat = subparsers.add_parser(
+        "convert",
+        formatter_class=HelpFormatter,
+        help="Convert from MATLAB .mat file",
+    )
     parser_mat.add_argument("filename", type=pathlib.Path)
     parser_mat.add_argument(
         "-n",
@@ -438,7 +443,11 @@ if __name__ == "__main__":
     )
 
     # generate random matrices
-    parser_random = subparsers.add_parser("random", help="Generate random matrices")
+    parser_random = subparsers.add_parser(
+        "random",
+        formatter_class=HelpFormatter,
+        help="Generate random matrices",
+    )
     parser_random.add_argument(
         "-t", "--type", choices=("fixed", "feedforward", "equalrow"), default="fixed"
     )

@@ -18,7 +18,9 @@ use std::time::Instant;
 
 use netbrot::colorschemes::ColorType;
 use netbrot::iterate::Netbrot;
-use netbrot::render::{render_orbit, render_period, RenderType, Renderer};
+use netbrot::render::{
+    render_attractive_fixed_points, render_orbit, render_period, RenderType, Renderer,
+};
 
 use nalgebra::DMatrix;
 use num::complex::Complex64;
@@ -141,6 +143,12 @@ fn main() {
                 bands.into_par_iter().for_each(|(i, band)| {
                     let local_renderer = renderer.to_slice(i);
                     render_period(&local_renderer, &brot, band);
+                });
+            }
+            RenderType::Attractive => {
+                bands.into_par_iter().for_each(|(i, band)| {
+                    let local_renderer = renderer.to_slice(i);
+                    render_attractive_fixed_points(&local_renderer, &brot, band, 1);
                 });
             }
         }

@@ -130,8 +130,6 @@ fn is_unique_fixed_point(
         return true;
     }
 
-    let divisors: Vec<u32> = (1..nperiod).filter(|i| nperiod % i == 0).collect();
-
     // Check if fixed point already exists
     let is_in = fixedpoints.iter().any(|z_j| (z - z_j).norm() < eps);
     if is_in {
@@ -145,6 +143,7 @@ fn is_unique_fixed_point(
     }
 
     // Check if it's a fixed point of a lower period
+    let divisors: Vec<u32> = (1..nperiod).filter(|i| nperiod % i == 0).collect();
     let is_smaller_period = divisors
         .iter()
         .any(|&j| netbrot_compose_fp(brot, z, j).norm() < eps);
@@ -185,13 +184,13 @@ pub fn find_fixed_points_by_newton(
         let z0 = generate_random_points_in_ball(&mut rng, ndim, radius);
         match solver.solve(&z0) {
             Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
-                println!(
-                    "[{}/{}] Found a root: {} from {}",
-                    ntries,
-                    fixedpoints.len(),
-                    z,
-                    z0
-                );
+                // println!(
+                //     "[{}/{}] Found a root: {} from {}",
+                //     ntries,
+                //     fixedpoints.len(),
+                //     z,
+                //     z0
+                // );
                 if is_unique_fixed_point(&fixedpoints, &z, brot, nperiod, eps) {
                     fixedpoints.push(z)
                 }
@@ -205,6 +204,14 @@ pub fn find_fixed_points_by_newton(
         }
     }
 
+    if fixedpoints.len() != npoints {
+        println!(
+            "[WARN] Only found {} out of {} fixed points",
+            fixedpoints.len(),
+            npoints
+        );
+    }
+
     fixedpoints
 }
 
@@ -215,6 +222,32 @@ pub fn find_fixed_points_by_newton(
 // }}}
 
 // {{{ find_fixed_points_by_polynomial
+
+// }}}
+
+// {{{ check attractiveness
+
+pub enum FixedPointType {
+    Attractive(f64),
+    Repulsive(f64),
+}
+
+pub fn fixed_point_type(brot: &Netbrot, fixedpoints: &Vec<Vector>, period: u32) -> FixedPointType {
+    let mut lambda_max = 0.0_f64;
+
+    for zstar in fixedpoints {
+        let jac = netbrot_compose_prime(brot, zstar, period);
+        let lambdas = jac.eigenvalues().unwrap();
+        let lambda_max_i = lambdas.iter().fold(0.0, |acc, z| z.norm().max(acc));
+
+        if lambda_max_i < 1.0 {
+            return FixedPointType::Attractive(lambda_max_i);
+        }
+        lambda_max = lambda_max.max(lambda_max_i);
+    }
+
+    FixedPointType::Repulsive(lambda_max)
+}
 
 // }}}
 
@@ -359,7 +392,7 @@ mod tests {
                     x: zstar,
                     iteration: _,
                 }) => {
-                    println!("z {} zeps {} zstar {}", z, zeps, zstar);
+                    // println!("z {} zeps {} zstar {}", z, zeps, zstar);
                     assert!((zstar - z).norm() < 10.0 * eps);
                 }
                 Err(_) => unreachable!(),
