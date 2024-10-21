@@ -18,14 +18,13 @@ use std::time::Instant;
 
 use netbrot::colorschemes::ColorType;
 use netbrot::iterate::Netbrot;
-use netbrot::render::{pixel_to_point, render_orbit, render_period, RenderType};
+use netbrot::render::{render_orbit, render_period, RenderType, Renderer};
 
 use nalgebra::DMatrix;
 use num::complex::Complex64;
 use serde::{Deserialize, Serialize};
 
 use clap::{Parser, ValueHint};
-use image::RgbImage;
 use rayon::prelude::*;
 
 // {{{ Command-line parser
@@ -45,7 +44,7 @@ struct Cli {
     /// Resolution of the resulting image (this will be scaled to have the same
     /// ration as the given bounding box)
     #[arg(short, long, default_value_t = 4096)]
-    resolution: u32,
+    resolution: usize,
 
     /// Maximum number of iterations before a point is considered in the set
     /// (this will also have an effect on the color intensity)
@@ -85,65 +84,69 @@ fn read_exhibit(filename: String) -> Result<Exhibit, Box<dyn Error>> {
 
 // }}}
 
-fn main() {
-    let args = Cli::parse();
-
-    let color_type = args.color;
-    let render_type = args.render;
-    println!("Rendering: {:?}", render_type);
-
-    let exhibit = read_exhibit(args.exhibit.clone()).unwrap();
-    let upper_left = exhibit.upper_left;
-    let lower_right = exhibit.lower_right;
+fn display(renderer: &Renderer, brot: &Netbrot) {
+    let bbox = renderer.bbox;
 
     println!(
-        "Bounding box: Top left {} Bottom right {}",
-        upper_left, lower_right
+        "Resolution:    {}x{}",
+        renderer.resolution.0, renderer.resolution.1
+    );
+    println!(
+        "Bounding box:  [{}, {}] x [{}, {}]",
+        bbox.0, bbox.1, bbox.2, bbox.3
+    );
+    println!(
+        "Rendering:     {:?} with {:?}",
+        renderer.render_type, renderer.color_type
     );
 
-    let ratio = (lower_right.re - upper_left.re) / (upper_left.im - lower_right.im);
-    let resolution = args.resolution as f64;
-    let bounds = ((ratio * resolution).round() as usize, resolution as usize);
-    println!("Resolution: {}x{}", bounds.0, bounds.1);
+    println!("Netbrot:       {}x{}", brot.mat.nrows(), brot.mat.ncols());
+    println!("Escape radius: {}", brot.escape_radius_squared.sqrt());
+}
 
-    let mut pixels = RgbImage::new(bounds.0 as u32, bounds.1 as u32);
+fn main() {
+    let args = Cli::parse();
+    let exhibit = read_exhibit(args.exhibit.clone()).unwrap();
+
+    let renderer = Renderer::new(
+        args.resolution,
+        // FIXME: make this a proper rectangle
+        (exhibit.upper_left.re, exhibit.lower_right.re),
+        (exhibit.lower_right.im, exhibit.upper_left.im),
+        args.color,
+        args.render,
+    );
+    let resolution = renderer.resolution;
+    let mut pixels = renderer.image();
 
     let brot = Netbrot::new(&exhibit.mat, args.maxit, exhibit.escape_radius);
-    println!("Escape radius {}", brot.escape_radius_squared.sqrt());
+    display(&renderer, &brot);
 
-    // Scope of slicing up `pixels` into horizontal bands.
+    println!();
     println!("Executing...");
     let now = Instant::now();
+
+    // Scope of slicing up `pixels` into horizontal bands.
     {
-        let bands: Vec<(usize, &mut [u8])> = pixels.chunks_mut(3 * bounds.0).enumerate().collect();
+        let bands: Vec<(usize, &mut [u8])> =
+            pixels.chunks_mut(3 * resolution.0).enumerate().collect();
 
-        bands.into_par_iter().for_each(|(i, band)| {
-            let top = i;
-            let band_bounds = (bounds.0, 1);
-            let band_upper_left = pixel_to_point(bounds, (0, top), upper_left, lower_right);
-            let band_lower_right =
-                pixel_to_point(bounds, (bounds.0, top + 1), upper_left, lower_right);
-
-            match render_type {
-                RenderType::Orbit => render_orbit(
-                    band,
-                    &brot,
-                    band_bounds,
-                    band_upper_left,
-                    band_lower_right,
-                    color_type,
-                ),
-                RenderType::Period => render_period(
-                    band,
-                    &brot,
-                    band_bounds,
-                    band_upper_left,
-                    band_lower_right,
-                    color_type,
-                ),
+        match renderer.render_type {
+            RenderType::Orbit => {
+                bands.into_par_iter().for_each(|(i, band)| {
+                    let local_renderer = renderer.to_slice(i);
+                    render_orbit(&local_renderer, &brot, band);
+                });
             }
-        });
+            RenderType::Period => {
+                bands.into_par_iter().for_each(|(i, band)| {
+                    let local_renderer = renderer.to_slice(i);
+                    render_period(&local_renderer, &brot, band);
+                });
+            }
+        }
     }
+
     let elapsed = now.elapsed().as_millis() as f32 / 1000.0;
     println!("Elapsed {}s!", elapsed);
 
