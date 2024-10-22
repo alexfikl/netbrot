@@ -103,6 +103,7 @@ fn display(renderer: &Renderer, brot: &Netbrot) {
     );
 
     println!("Netbrot:       {}x{}", brot.mat.nrows(), brot.mat.ncols());
+    println!("Iterations:    {}", brot.maxit);
     println!("Escape radius: {}", brot.escape_radius_squared.sqrt());
 }
 
