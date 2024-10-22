@@ -240,7 +240,7 @@ pub fn fixed_point_type(brot: &Netbrot, fixedpoints: &Vec<Vector>, period: u32) 
         let lambdas = jac.eigenvalues().unwrap();
         let lambda_max_i = lambdas.iter().fold(0.0, |acc, z| z.norm().max(acc));
 
-        if lambda_max_i < 1.0 {
+        if lambda_max_i < 1.01 {
             return FixedPointType::Attractive(lambda_max_i);
         }
         lambda_max = lambda_max.max(lambda_max_i);

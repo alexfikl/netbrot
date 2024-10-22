@@ -128,14 +128,25 @@ pub enum ColorType {
     OrbitBlue,
     /// Color palette for orbit rendering (red-purple hues).
     OrbitFire,
+    /// Grayscale palette for orbit rendering.
+    OrbitGray,
     /// Black and white palette for orbit rendering.
     OrbitBinary,
+
+    /// Color palette for fixed point rendering (blue hues).
+    EigenBlue,
+    /// Color palette for fixed point rendering (green hues).
+    EigenGreen,
+    /// Color palette for fixed point rendering (yellow hues).
+    EigenFire,
+    /// Grayscale palette for fixed point randering.
+    EigenGray,
 }
 
 /// Determine the color for a normalized iteration count *c*.
 ///
 /// This function takes a value *c* in [0, 1].
-pub fn get_orbit_color(c: f64) -> Rgb<u8> {
+fn orbit_color_hsl(c: f64) -> Rgb<u8> {
     let n = c.clamp(0.0, 1.0);
 
     // NOTE: in HSL, we have that H in [0, 360], S in [0, 100] and L in [0, 100]
@@ -147,17 +158,46 @@ pub fn get_orbit_color(c: f64) -> Rgb<u8> {
     Rgb([b as u8, g as u8, r as u8])
 }
 
+// Determine grayscale color for normalized iteration count *c*.
+//
+// This function takes a value *c* in [0, 1].
+fn orbit_color_gray(c: f64) -> Rgb<u8> {
+    let n = 1.0 - c.clamp(0.0, 1.0).powf(0.4_f64);
+    let g = (n * 255.0).round() as u8;
+
+    Rgb([g, g, g])
+}
+
+fn fixed_point_color(c: f64, from: &Rgb<u8>, to: &Rgb<u8>) -> Rgb<u8> {
+    let n = c.clamp(0.0, 1.0);
+    let cfrom = from.0;
+    let cto = to.0;
+
+    Rgb([
+        ((1.0 - n) * (cfrom[0] as f64) + n * (cto[0] as f64)) as u8,
+        ((1.0 - n) * (cfrom[1] as f64) + n * (cto[1] as f64)) as u8,
+        ((1.0 - n) * (cfrom[2] as f64) + n * (cto[2] as f64)) as u8,
+    ])
+}
+
 /// Determine the color for a non-normalized iteration count *c* at *z*.
 ///
 /// This function tries to be a bit smarter with the coloring and uses the
 /// renormalization mentioned in [here](https://linas.org/art-gallery/escape/escape.html).
-pub fn get_smooth_orbit_color(color: ColorType, c: usize, z: f64, limit: usize) -> Rgb<u8> {
-    let cz = ((c as f64) + 1.0 - z.ln().log2()) / (limit as f64);
+pub fn get_smooth_orbit_color(
+    color: ColorType,
+    c: usize,
+    z: f64,
+    limit: usize,
+    radius: f64,
+) -> Rgb<u8> {
+    let cz = ((c as f64) + 1.0 - z.ln().ln() / radius.ln()) / (limit as f64);
 
     match color {
         ColorType::OrbitBinary => Rgb([255, 255, 255]),
-        ColorType::OrbitFire => get_orbit_color(3.0 * cz * cz - 3.0 * cz + 1.0),
-        ColorType::DefaultPalette | ColorType::OrbitBlue => get_orbit_color(cz),
+        ColorType::OrbitGray => orbit_color_gray(cz),
+        ColorType::OrbitFire => orbit_color_hsl(3.0 * cz * cz - 3.0 * cz + 1.0),
+        ColorType::DefaultPalette | ColorType::OrbitBlue => orbit_color_hsl(cz),
         _ => panic!("Unsupported color type: {:?}", color),
     }
 }
@@ -175,9 +215,24 @@ pub fn get_period_color(color: ColorType, p: usize) -> Rgb<u8> {
     }
 }
 
+/// Determine the color for a given fixed point eigenvalue magnitude.
+///
+/// The magnitude is expected to be in [0, 1]. Anything out of this range is clamped.
 pub fn get_fixed_point_color(color: ColorType, magnitude: f64) -> Rgb<u8> {
+    let mut c = magnitude.clamp(0.0, 1.0);
+    c = (c * 16.0).round() / 16.0;
+
     match color {
-        ColorType::DefaultPalette => get_orbit_color(magnitude),
+        ColorType::EigenGray => fixed_point_color(c, &Rgb([0, 0, 0]), &Rgb([255, 255, 255])),
+        // NOTE: Colors taken from the 'magma' colormap in matplolib
+        //      mpl.colormaps["magma"](0.0) and (1.0)
+        // NOTE: this does not match the actual colormap!
+        ColorType::EigenFire => fixed_point_color(c, &Rgb([68, 1, 84]), &Rgb([253, 231, 36])),
+        // NOTE: Colors taken from the 'viridis' colormap in matplolib
+        ColorType::EigenGreen => fixed_point_color(c, &Rgb([0, 0, 3]), &Rgb([251, 252, 191])),
+        ColorType::DefaultPalette | ColorType::EigenBlue => {
+            fixed_point_color(1.0 - c, &Rgb([0, 0, 241]), &Rgb([241, 0, 0]))
+        }
         _ => panic!("Unsupported color type: {:?}", color),
     }
 }
