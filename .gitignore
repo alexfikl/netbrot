@@ -1,6 +1,7 @@
 .mypy_cache
 .ruff_cache
 
+data/*.npz
 data/*.mat
 data/*.json
 
