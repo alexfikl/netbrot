@@ -8,7 +8,9 @@ use num::complex::{c64, Complex64};
 use crate::colorschemes::{
     get_fixed_point_color, get_period_color, get_smooth_orbit_color, ColorType,
 };
-use crate::fixedpoints::{find_fixed_points_by_newton, fixed_point_type, FixedPointType};
+use crate::fixedpoints::{
+    find_fixed_points_by_newton, fixed_point_type, unique_poly_solutions, FixedPointType,
+};
 use crate::iterate::{netbrot_orbit, netbrot_orbit_period, EscapeResult, Netbrot};
 
 pub const MAX_PERIODS: usize = 20;
@@ -181,16 +183,22 @@ pub fn render_attractive_fixed_points(
     pixels: &mut [u8],
     period: u32,
 ) {
+    let ndim = brot.z0.len() as u32;
     let color = renderer.color_type;
     let resolution = renderer.resolution;
     assert!(pixels.len() == 3 * resolution.0 * resolution.1);
 
+    let mut nfails = 0;
     let mut local_brot = Netbrot::new(&brot.mat, brot.maxit, brot.escape_radius_squared.sqrt());
 
     for row in 0..resolution.1 {
         for column in 0..resolution.0 {
             local_brot.c = renderer.pixel_to_point((column, row));
-            let fp = find_fixed_points_by_newton(&local_brot, period, 1024, 1.0e-8);
+            let fp = find_fixed_points_by_newton(&local_brot, period, 2048, 1.0e-8);
+            let nfps = unique_poly_solutions(ndim, period) as usize;
+            if fp.len() < nfps {
+                nfails += 1;
+            }
 
             let color = match fixed_point_type(&local_brot, &fp, period) {
                 FixedPointType::Attractive(lambda) => get_fixed_point_color(color, lambda),
@@ -202,6 +210,14 @@ pub fn render_attractive_fixed_points(
             pixels[index + 1] = color[1];
             pixels[index + 2] = color[2];
         }
+    }
+
+    if nfails != 0 {
+        println!(
+            "Failed to find all roots for {} out of {} points",
+            nfails,
+            resolution.0 * resolution.1
+        );
     }
 }
 

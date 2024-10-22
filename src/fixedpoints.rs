@@ -10,11 +10,11 @@ use crate::newton::{NewtonRaphson, NewtonRaphsonResult};
 
 /// {{{ polynomial solutions
 
-fn bezout_number(ndim: u32, n: u32) -> u32 {
+pub fn bezout_number(ndim: u32, n: u32) -> u32 {
     2_u32.pow(ndim).pow(n)
 }
 
-fn unique_poly_solutions(ndim: u32, n: u32) -> u32 {
+pub fn unique_poly_solutions(ndim: u32, n: u32) -> u32 {
     let b = bezout_number(ndim, n);
     if n == 1 {
         return b;
@@ -180,48 +180,24 @@ pub fn find_fixed_points_by_newton(
         .with_rtol(eps / 10.0)
         .with_maxit(512);
 
-    while ntries < maxit {
+    while ntries < maxit && fixedpoints.len() < npoints {
         let z0 = generate_random_points_in_ball(&mut rng, ndim, radius);
+
         match solver.solve(&z0) {
             Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
-                // println!(
-                //     "[{}/{}] Found a root: {} from {}",
-                //     ntries,
-                //     fixedpoints.len(),
-                //     z,
-                //     z0
-                // );
                 if is_unique_fixed_point(&fixedpoints, &z, brot, nperiod, eps) {
                     fixedpoints.push(z)
                 }
             }
             Err(_) => continue,
         }
+
+        // TODO: only increment on successful attempts?
         ntries += 1;
-
-        if fixedpoints.len() == npoints {
-            break;
-        }
-    }
-
-    if fixedpoints.len() != npoints {
-        println!(
-            "[WARN] Only found {} out of {} fixed points",
-            fixedpoints.len(),
-            npoints
-        );
     }
 
     fixedpoints
 }
-
-// }}}
-
-// {{{ find_fixed_points_by_iteration
-
-// }}}
-
-// {{{ find_fixed_points_by_polynomial
 
 // }}}
 
