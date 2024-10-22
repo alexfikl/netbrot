@@ -119,6 +119,7 @@ pub fn render_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]) {
     assert!(pixels.len() == 3 * resolution.0 * resolution.1);
 
     let maxit = brot.maxit;
+    let escape_radius = brot.escape_radius_squared.sqrt();
     let mut local_brot = Netbrot::new(&brot.mat, brot.maxit, brot.escape_radius_squared.sqrt());
 
     for row in 0..resolution.1 {
@@ -132,7 +133,7 @@ pub fn render_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]) {
                 EscapeResult {
                     iteration: Some(n),
                     z,
-                } => get_smooth_orbit_color(color, n, z.norm(), maxit),
+                } => get_smooth_orbit_color(color, n, z.norm(), maxit, escape_radius),
             };
 
             let index = row * resolution.0 + 3 * column;

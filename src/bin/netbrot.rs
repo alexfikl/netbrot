@@ -149,7 +149,7 @@ fn main() {
             RenderType::Attractive => {
                 bands.into_par_iter().for_each(|(i, band)| {
                     let local_renderer = renderer.to_slice(i);
-                    render_attractive_fixed_points(&local_renderer, &brot, band, 1);
+                    render_attractive_fixed_points(&local_renderer, &brot, band, 2);
                 });
             }
         }
