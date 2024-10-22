@@ -27,7 +27,8 @@ use num::complex::Complex64;
 use serde::{Deserialize, Serialize};
 
 use clap::{Parser, ValueHint};
-use rayon::prelude::*;
+use indicatif::ParallelProgressIterator;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 // {{{ Command-line parser
 
@@ -132,25 +133,35 @@ fn main() {
     {
         let bands: Vec<(usize, &mut [u8])> =
             pixels.chunks_mut(3 * resolution.0).enumerate().collect();
+        let nbands = bands.len() as u64;
 
         match renderer.render_type {
             RenderType::Orbit => {
-                bands.into_par_iter().for_each(|(i, band)| {
-                    let local_renderer = renderer.to_slice(i);
-                    render_orbit(&local_renderer, &brot, band);
-                });
+                bands
+                    .into_par_iter()
+                    .progress_count(nbands)
+                    .for_each(|(i, band)| {
+                        let local_renderer = renderer.to_slice(i);
+                        render_orbit(&local_renderer, &brot, band);
+                    });
             }
             RenderType::Period => {
-                bands.into_par_iter().for_each(|(i, band)| {
-                    let local_renderer = renderer.to_slice(i);
-                    render_period(&local_renderer, &brot, band);
-                });
+                bands
+                    .into_par_iter()
+                    .progress_count(nbands)
+                    .for_each(|(i, band)| {
+                        let local_renderer = renderer.to_slice(i);
+                        render_period(&local_renderer, &brot, band);
+                    });
             }
             RenderType::Attractive => {
-                bands.into_par_iter().for_each(|(i, band)| {
-                    let local_renderer = renderer.to_slice(i);
-                    render_attractive_fixed_points(&local_renderer, &brot, band, 2);
-                });
+                bands
+                    .into_par_iter()
+                    .progress_count(nbands)
+                    .for_each(|(i, band)| {
+                        let local_renderer = renderer.to_slice(i);
+                        render_attractive_fixed_points(&local_renderer, &brot, band, 1);
+                    });
             }
         }
     }
