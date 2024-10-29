@@ -17,9 +17,10 @@ use std::path::Path;
 use std::time::Instant;
 
 use netbrot::colorschemes::ColorType;
-use netbrot::iterate::Netbrot;
+use netbrot::iterate::{Netbrot, Vector};
 use netbrot::render::{
-    render_attractive_fixed_points, render_orbit, render_period, RenderType, Renderer,
+    render_attractive_fixed_points, render_julia_orbit, render_mandelbrot_orbit, render_period,
+    RenderType, Renderer,
 };
 
 use nalgebra::DMatrix;
@@ -37,7 +38,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 struct Cli {
     /// The type of render to perform (this mainly has an effect of the colors
     /// and the meaning of the colors)
-    #[arg(long, value_enum, default_value = "orbit")]
+    #[arg(long, value_enum, default_value = "mandelbrot")]
     render: RenderType,
 
     /// The color palette to use when rendering
@@ -61,6 +62,11 @@ struct Cli {
     /// Output file name
     #[arg(short, long, value_hint = ValueHint::FilePath)]
     outfile: Option<String>,
+
+    /// Starting point. When plotting the Mandelbrot set, this corresponds to
+    /// z0 and when plotting the Julia set, this corresponds to c.
+    #[arg(short, long, default_values_t = vec![0.0, 0.0], num_args = 2, allow_hyphen_values = true)]
+    point: Vec<f64>,
 }
 
 // {{ exhibits
@@ -106,6 +112,10 @@ fn display(renderer: &Renderer, brot: &Netbrot) {
     println!("Netbrot:       {}x{}", brot.mat.nrows(), brot.mat.ncols());
     println!("Iterations:    {}", brot.maxit);
     println!("Escape radius: {}", brot.escape_radius_squared.sqrt());
+    match renderer.render_type {
+        RenderType::Julia => println!("c:             {}", brot.c),
+        _ => println!("z0:            {:?}", brot.z0.data.as_vec()),
+    }
 }
 
 fn main() {
@@ -123,7 +133,24 @@ fn main() {
     let resolution = renderer.resolution;
     let mut pixels = renderer.image();
 
-    let brot = Netbrot::new(&exhibit.mat, args.maxit, exhibit.escape_radius);
+    let mut brot = Netbrot::new(&exhibit.mat, args.maxit, exhibit.escape_radius);
+    match renderer.render_type {
+        RenderType::Julia => {
+            brot.c = Complex64 {
+                re: args.point[0],
+                im: args.point[1],
+            }
+        }
+        _ => {
+            brot.z0 = Vector::from_element(
+                brot.z0.len(),
+                Complex64 {
+                    re: args.point[0],
+                    im: args.point[1],
+                },
+            )
+        }
+    }
     display(&renderer, &brot);
 
     println!("Executing...");
@@ -136,13 +163,22 @@ fn main() {
         let nbands = bands.len() as u64;
 
         match renderer.render_type {
-            RenderType::Orbit => {
+            RenderType::Julia => {
                 bands
                     .into_par_iter()
                     .progress_count(nbands)
                     .for_each(|(i, band)| {
                         let local_renderer = renderer.to_slice(i);
-                        render_orbit(&local_renderer, &brot, band);
+                        render_julia_orbit(&local_renderer, &brot, band);
+                    });
+            }
+            RenderType::Mandelbrot => {
+                bands
+                    .into_par_iter()
+                    .progress_count(nbands)
+                    .for_each(|(i, band)| {
+                        let local_renderer = renderer.to_slice(i);
+                        render_mandelbrot_orbit(&local_renderer, &brot, band);
                     });
             }
             RenderType::Period => {

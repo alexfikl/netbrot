@@ -31,7 +31,7 @@ impl Netbrot {
     pub fn new(mat: &Matrix, maxit: usize, escape_radius: f64) -> Self {
         Netbrot {
             mat: mat.clone(),
-            z0: DVector::zeros(mat.nrows()),
+            z0: Vector::zeros(mat.nrows()),
             c: c64(0.0, 0.0),
             maxit,
             escape_radius_squared: escape_radius * escape_radius,

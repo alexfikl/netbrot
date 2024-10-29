@@ -11,7 +11,7 @@ use crate::colorschemes::{
 use crate::fixedpoints::{
     find_fixed_points_by_newton, fixed_point_type, unique_poly_solutions, FixedPointType,
 };
-use crate::iterate::{netbrot_orbit, netbrot_orbit_period, EscapeResult, Netbrot};
+use crate::iterate::{netbrot_orbit, netbrot_orbit_period, EscapeResult, Netbrot, Vector};
 
 pub const MAX_PERIODS: usize = 20;
 pub const PERIOD_WINDOW: usize = 2 * MAX_PERIODS;
@@ -20,9 +20,11 @@ pub const PERIOD_WINDOW: usize = 2 * MAX_PERIODS;
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RenderType {
-    /// Plot orbits.
-    Orbit,
-    /// Plot periodicity for orbits that do not escape.
+    /// Plot Julia set: all points $z$ (for a fixed $c$) that do not escape.
+    Julia,
+    /// Plot Mandelbrot set: all points $c$ (for fixed $z_0$) that do not escape.
+    Mandelbrot,
+    /// Plot periodicity for orbits that do not escape for a fixed $z_0$.
     Period,
     /// Plot regions of attractive fixed points points.
     Attractive,
@@ -113,16 +115,64 @@ impl Renderer {
 
 // }}}
 
-// {{{ render orbits
+// {{{ render Julia orbits
 
-pub fn render_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]) {
+pub fn render_julia_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]) {
     let color = renderer.color_type;
     let resolution = renderer.resolution;
     assert!(pixels.len() == 3 * resolution.0 * resolution.1);
 
     let maxit = brot.maxit;
     let escape_radius = brot.escape_radius_squared.sqrt();
-    let mut local_brot = Netbrot::new(&brot.mat, brot.maxit, brot.escape_radius_squared.sqrt());
+    let mut local_brot = Netbrot {
+        mat: brot.mat.clone(),
+        z0: brot.z0.clone(),
+        c: brot.c,
+        maxit: brot.maxit,
+        escape_radius_squared: brot.escape_radius_squared,
+    };
+
+    for row in 0..resolution.1 {
+        for column in 0..resolution.0 {
+            local_brot.z0 =
+                Vector::from_element(brot.z0.len(), renderer.pixel_to_point((column, row)));
+            let color = match netbrot_orbit(&local_brot) {
+                EscapeResult {
+                    iteration: None,
+                    z: _,
+                } => Rgb([0, 0, 0]),
+                EscapeResult {
+                    iteration: Some(n),
+                    z,
+                } => get_smooth_orbit_color(color, n, z.norm(), maxit, escape_radius),
+            };
+
+            let index = row * resolution.0 + 3 * column;
+            pixels[index] = color[0];
+            pixels[index + 1] = color[1];
+            pixels[index + 2] = color[2];
+        }
+    }
+}
+
+// }}}
+
+// {{{ render Mandelbrot orbits
+
+pub fn render_mandelbrot_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]) {
+    let color = renderer.color_type;
+    let resolution = renderer.resolution;
+    assert!(pixels.len() == 3 * resolution.0 * resolution.1);
+
+    let maxit = brot.maxit;
+    let escape_radius = brot.escape_radius_squared.sqrt();
+    let mut local_brot = Netbrot {
+        mat: brot.mat.clone(),
+        z0: brot.z0.clone(),
+        c: brot.c,
+        maxit: brot.maxit,
+        escape_radius_squared: brot.escape_radius_squared,
+    };
 
     for row in 0..resolution.1 {
         for column in 0..resolution.0 {
