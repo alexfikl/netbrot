@@ -15,7 +15,7 @@ log.addHandler(rich.logging.RichHandler())
 
 SCRIPT_PATH = pathlib.Path(__file__)
 SCRIPT_LONG_HELP = f"""\
-Converts a given set of image files (PNG, JPG, etc) to a matrices and saves them
+Converts a given set of image files (PNG, JPG, etc) to matrices and saves them
 in a `.mat` MATLAB file. The file will contain two variables
 * `{{prefix}}_rgb`: a matrix of size `(n, px, py, 3)`, where `n` is the number of
   input images, `(px, py)` is the resolution of each image and `3` corresponds to
