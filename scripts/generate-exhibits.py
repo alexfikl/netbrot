@@ -9,6 +9,7 @@ import pathlib
 from typing import Any, TypedDict
 
 import numpy as np
+import numpy.linalg as la
 import rich.logging
 
 log = logging.getLogger(pathlib.Path(__file__).stem)
@@ -74,26 +75,32 @@ def dump(
     upper_left: tuple[float, float] = DEFAULT_UPPER_LEFT,
     lower_right: tuple[float, float] = DEFAULT_LOWER_RIGHT,
     *,
+    max_escape_radius: float | None = None,
     overwrite: bool = False,
 ) -> int:
     if not overwrite and outfile.exists():
         log.error("Output file exists (use --overwrite): '%s'.", outfile)
         return 1
 
+    if max_escape_radius is None:
+        max_escape_radius = np.inf
+
     with open(outfile, "w", encoding="utf-8") as outf:
         escape_radius = estimate_escape_radius(mat)
+        exhibit_escape_radius = min(escape_radius, max_escape_radius)
         log.info(
-            "Dumping exhibit '%s': shape %s (cond %.3e) escape radius %g",
+            "Dumping exhibit '%s': shape %s (cond %.3e) escape radius %g (real %g)",
             outfile.stem,
             mat.shape,
             np.linalg.cond(mat),
+            exhibit_escape_radius,
             escape_radius,
         )
 
         json.dump(
             {
                 "mat": serde_matrix_format(mat),
-                "escape_radius": escape_radius,
+                "escape_radius": exhibit_escape_radius,
                 "upper_left": upper_left,
                 "lower_right": lower_right,
             },
@@ -119,6 +126,9 @@ def convert_matlab(
     mat_variable_names: list[str] | None = None,
     upper_left: tuple[float, float] | None = None,
     lower_right: tuple[float, float] | None = None,
+    max_escape_radius: float | None = None,
+    transpose: bool = False,
+    normalize: bool = False,
     overwrite: bool = False,
 ) -> int:
     # {{{ sanitize inputs
@@ -164,15 +174,27 @@ def convert_matlab(
             log.error("Object '%s' is not an ndarray: '%s'", name, type(mat).__name__)
             continue
 
+        new_matrices = []
         if mat.ndim == 2:
-            matrices.append(mat)
+            if transpose:
+                mat = mat.T
+
+            new_matrices.append(mat)
         elif mat.ndim == 3:
-            matrices.extend(mat)
+            if transpose:
+                new_matrices.extend(mat[..., i] for i in range(mat.shape[-1]))
+            else:
+                new_matrices.extend(mat[i] for i in range(mat.shape[0]))
         else:
             ret = 1
             log.error("Object '%s' has unsupported shape: %s", name, mat.shape)
             continue
 
+        if normalize:
+            # FIXME: would be nice to choose the norm?
+            new_matrices = [m / la.norm(m, ord=np.inf) for m in new_matrices]
+
+        matrices.extend(new_matrices)
         log.info("Read a matrix of size '%s' from '%s'.", mat.shape, name)
 
     if not matrices:
@@ -186,7 +208,14 @@ def convert_matlab(
     width = len(str(len(matrices)))
     for i, mat in enumerate(matrices):
         outfile_i = outfile.with_stem(f"{outfile.stem}-{i:0{width}}")
-        ret |= dump(outfile_i, mat, upper_left, lower_right, overwrite=overwrite)
+        ret |= dump(
+            outfile_i,
+            mat,
+            upper_left,
+            lower_right,
+            max_escape_radius=max_escape_radius,
+            overwrite=overwrite,
+        )
 
     # }}}
 
@@ -309,6 +338,7 @@ def generate_random_matrix(
     mat_type: str = "fixed",
     upper_left: tuple[float, float] | None = None,
     lower_right: tuple[float, float] | None = None,
+    max_escape_radius: float | None = None,
     parametric: bool = False,
     rng: np.random.Generator | None = None,
     outfile: pathlib.Path | None = None,
@@ -361,7 +391,12 @@ def generate_random_matrix(
     width = len(str(len(exhibits)))
     for i, ex in enumerate(exhibits):
         outfile_i = outfile.with_stem(f"{outfile.stem}-{i:0{width}}")
-        ret |= dump(outfile_i, **ex, overwrite=overwrite)
+        ret |= dump(
+            outfile_i,
+            **ex,
+            max_escape_radius=max_escape_radius,
+            overwrite=overwrite,
+        )
 
     return ret
 
@@ -411,6 +446,13 @@ if __name__ == "__main__":
         help="Rendering bounds (in physical space) for the y coordinate",
     )
     parser.add_argument(
+        "-r",
+        "--escape-radius",
+        default=None,
+        type=float,
+        help="Maximum escape radius",
+    )
+    parser.add_argument(
         "-q",
         "--quiet",
         action="store_true",
@@ -431,13 +473,28 @@ if __name__ == "__main__":
         action="append",
         help="Name of the variable containing matrices in the .mat file",
     )
+    parser_mat.add_argument(
+        "-t",
+        "--transpose",
+        action="store_true",
+        help="Transpose the matrix that is read from the .mat file",
+    )
+    parser_mat.add_argument(
+        "-z",
+        "--normalize",
+        action="store_true",
+        help="Normalize the matrices by their norm",
+    )
     parser_mat.set_defaults(
         func=lambda args: convert_matlab(
             args.filename,
             mat_variable_names=args.variable_name,
             upper_left=(args.xlim[0], args.ylim[1]),
             lower_right=(args.xlim[1], args.ylim[0]),
+            max_escape_radius=args.escape_radius,
             outfile=args.outfile,
+            transpose=args.transpose,
+            normalize=args.normalize,
             overwrite=args.overwrite,
         )
     )
@@ -465,6 +522,7 @@ if __name__ == "__main__":
             mat_type=args.type,
             upper_left=(args.xlim[0], args.ylim[1]),
             lower_right=(args.xlim[1], args.ylim[0]),
+            max_escape_radius=args.escape_radius,
             parametric=args.parametric,
             outfile=args.outfile,
             overwrite=args.overwrite,
