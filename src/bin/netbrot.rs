@@ -114,7 +114,13 @@ fn display(renderer: &Renderer, brot: &Netbrot) {
     println!("Escape radius: {}", brot.escape_radius_squared.sqrt());
     match renderer.render_type {
         RenderType::Julia => println!("c:             {}", brot.c),
-        _ => println!("z0:            {:?}", brot.z0.data.as_vec()),
+        _ => {
+            if brot.z0.len() <= 5 {
+                println!("z0:            {:?}", brot.z0.data.as_vec())
+            } else {
+                println!("z0 (norm):     {:?}", brot.z0.norm())
+            }
+        }
     }
 }
 
