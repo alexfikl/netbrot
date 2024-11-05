@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import pathlib
 from typing import Any
@@ -83,40 +84,47 @@ def set_recommended_matplotlib() -> None:
 
 
 def main(
-    filename: pathlib.Path,
+    filenames: list[pathlib.Path],
     *,
-    name: str = "matrices",
     overwrite: bool = False,
 ) -> int:
-    if not filename.exists():
-        log.error("File does not exist: '%s'", filename)
-        return 1
-
     import matplotlib.pyplot as mp
     from matplotlib.colors import LogNorm
 
-    data = np.load(filename, allow_pickle=True)
-    matrices = data[name]
-
     set_recommended_matplotlib()
+    ext = ".{}".format(mp.rcParams["savefig.format"])
 
-    for i in range(matrices.size):
-        mat = matrices[i]
+    for filename in filenames:
+        if not filename.exists():
+            log.error("File does not exist: '%s'", filename)
+            return 1
+
+        with open(filename, encoding="utf-8") as inf:
+            data = json.load(inf)
+
+        elements, *shape = data["mat"]
+        if len(shape) != 2 or shape[0] != shape[1]:
+            log.error("Matrix expected to be square: %s ('%s')", shape, filename)
+            continue
+
+        mat = np.array([e_r for e_r, _ in elements]).reshape(*shape).T
         eigs = np.linalg.eigvals(mat)
         kappa = np.linalg.cond(mat)
+        emax = np.max(np.abs(mat))
 
         fig, (ax1, ax2) = mp.subplots(1, 2)
 
         ax1.imshow(mat, norm=LogNorm() if mat.shape[0] > 32 else None)
+        ax1.set_title(rf"$\max |A_{{ij}}| = {emax:.5e}$")
         ax2.plot(eigs.real, eigs.imag, "o")
         ax2.set_xlim([-1.0, 1.0])
         ax2.set_title(rf"$\kappa = {kappa:.5e}$")
 
-        outfile = filename.parent / f"{filename.stem}_{i:02d}"
+        outfile = filename.with_suffix(ext)
         fig.savefig(outfile)
         mp.close(fig)
 
-        log.info("Saving matrix %d to file '%s'.", i, outfile)
+        log.info("Saving matrix to file '%s'.", outfile)
 
     return 0
 
@@ -137,13 +145,7 @@ if __name__ == "__main__":
         formatter_class=HelpFormatter,
         description=SCRIPT_LONG_HELP,
     )
-    parser.add_argument("filename", type=pathlib.Path)
-    parser.add_argument(
-        "-n",
-        "--variable-name",
-        default="matrices",
-        help="Name of the variable containing matrices",
-    )
+    parser.add_argument("filenames", nargs="+", type=pathlib.Path)
     parser.add_argument(
         "--overwrite",
         action="store_true",
@@ -162,8 +164,7 @@ if __name__ == "__main__":
 
     raise SystemExit(
         main(
-            args.filename,
-            name=args.variable_name,
+            args.filenames,
             overwrite=args.overwrite,
         )
     )
