@@ -120,7 +120,7 @@ def main(
         ax2.set_xlim([-1.0, 1.0])
         ax2.set_title(rf"$\kappa = {kappa:.5e}$")
 
-        outfile = filename.with_suffix(ext)
+        outfile = (filename.parent / f"{filename.stem}-eigs").with_suffix(ext)
         fig.savefig(outfile)
         mp.close(fig)
 
