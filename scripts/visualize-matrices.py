@@ -55,9 +55,6 @@ def set_recommended_matplotlib() -> None:
             # NOTE: preserve existing colors (the ones in "science" are ugly)
             "prop_cycle": mp.rcParams["axes.prop_cycle"],
         },
-        "image": {
-            "cmap": "binary",
-        },
         "xtick": {"labelsize": 20, "direction": "inout"},
         "ytick": {"labelsize": 20, "direction": "inout"},
         "xtick.major": {"size": 6.5, "width": 1.5},
@@ -89,7 +86,7 @@ def main(
     overwrite: bool = False,
 ) -> int:
     import matplotlib.pyplot as mp
-    from matplotlib.colors import LogNorm
+    from matplotlib.colors import LogNorm, SymLogNorm
 
     set_recommended_matplotlib()
     ext = ".{}".format(mp.rcParams["savefig.format"])
@@ -113,9 +110,16 @@ def main(
         emax = np.max(np.abs(mat))
 
         fig, (ax1, ax2) = mp.subplots(1, 2)
+        if np.min(mat) < 0.0:
+            im_norm = SymLogNorm(0.25)
+            im_cmap = "seismic"
+        else:
+            im_norm = LogNorm()
+            im_cmap = "binary"
 
-        ax1.imshow(mat, norm=LogNorm() if mat.shape[0] > 32 else None)
+        ax1.imshow(mat, norm=im_norm, cmap=im_cmap)
         ax1.set_title(rf"$\max |A_{{ij}}| = {emax:.5e}$")
+
         ax2.plot(eigs.real, eigs.imag, "o")
         ax2.set_xlim([-1.0, 1.0])
         ax2.set_title(rf"$\kappa = {kappa:.5e}$")
