@@ -23,14 +23,9 @@ This script generates a collection of JSON files that can be used with the main
 files have a very specific format (so that they can be loaded by `serde`), so
 be careful when playing with them manually!
 
-The script supports multiple modes of operation.
-* `convert`: Takes a MATLAB `.mat` file containing some matrices and converts.
-  If the given variable is a 3-dimensional tensor, the first dimension is
-  considered an index for multiple matrices. Like that, a matrix of size
-  `(7, 32, 32)` will generate 7 different JSON files.
-* `random`: Generates some random NxN matrices of a desired type. Currently
-  this supports: `fixed` for some matrices we like, `feedforward` for lower
-  triangular matrices, and `equalrow` for matrices with equal row sums.
+This scrit generates some random NxN matrices of a desired type. Currently
+this supports: `fixed` for some matrices we like, `feedforward` for lower
+triangular matrices, and `equalrow` for matrices with equal row sums.
 
 The bounding box for rendering can be specified using the `--xlim` and `--ylim`
 parameters. The resulting JSON files has the following fields
@@ -45,8 +40,7 @@ parameters. The resulting JSON files has the following fields
 
 Example:
 
-    > {SCRIPT_PATH.name} convert --variable-name matrices data.mat
-    > {SCRIPT_PATH.name} random --type feedforward --size 10 --count 32
+    > {SCRIPT_PATH.name} --type feedforward --size 10 --count 32
 """
 
 # {{{ utils
@@ -111,115 +105,6 @@ def dump(
 
     log.info("Saved matrix in '%s'.", outfile)
     return 0
-
-
-# }}}
-
-
-# {{{ convert MATLAB file
-
-
-def convert_matlab(
-    filename: pathlib.Path,
-    outfile: pathlib.Path | None = None,
-    *,
-    mat_variable_names: list[str] | None = None,
-    upper_left: tuple[float, float] | None = None,
-    lower_right: tuple[float, float] | None = None,
-    max_escape_radius: float | None = None,
-    transpose: bool = False,
-    normalize: bool = False,
-    overwrite: bool = False,
-) -> int:
-    # {{{ sanitize inputs
-
-    if not filename.exists():
-        log.error("File does not exist: '%s'.", filename)
-        return 1
-
-    if outfile is None:
-        outfile = filename.with_suffix(".json")
-
-    if mat_variable_names is None:
-        mat_variable_names = []
-
-    if upper_left is None:
-        upper_left = DEFAULT_UPPER_LEFT
-
-    if lower_right is None:
-        lower_right = DEFAULT_LOWER_RIGHT
-
-    if upper_left[0] > lower_right[0]:
-        log.error("Invalid bounds: xmin %s xmax %s", upper_left[0], lower_right[0])
-        return 1
-
-    if upper_left[1] < lower_right[1]:
-        log.error("Invalid bounds: ymin %s ymax %s", upper_left[1], lower_right[1])
-        return 1
-
-    # }}}
-
-    # {{{ read matrices
-
-    from scipy.io import loadmat
-
-    result = loadmat(filename)
-
-    ret = 0
-    matrices = []
-    for name in mat_variable_names:
-        mat = result[name]
-        if not isinstance(mat, np.ndarray):
-            ret = 1
-            log.error("Object '%s' is not an ndarray: '%s'", name, type(mat).__name__)
-            continue
-
-        new_matrices = []
-        if mat.ndim == 2:
-            if transpose:
-                mat = mat.T
-
-            new_matrices.append(mat)
-        elif mat.ndim == 3:
-            if transpose:
-                new_matrices.extend(mat[..., i] for i in range(mat.shape[-1]))
-            else:
-                new_matrices.extend(mat[i] for i in range(mat.shape[0]))
-        else:
-            ret = 1
-            log.error("Object '%s' has unsupported shape: %s", name, mat.shape)
-            continue
-
-        if normalize:
-            # FIXME: would be nice to choose the norm?
-            new_matrices = [m / la.norm(m, ord=np.inf) for m in new_matrices]
-
-        matrices.extend(new_matrices)
-        log.info("Read a matrix of size '%s' from '%s'.", mat.shape, name)
-
-    if not matrices:
-        log.warning("Failed to read any matrices from '%s'.", filename)
-        return ret
-
-    # }}}
-
-    # {{{ write matrices
-
-    width = len(str(len(matrices)))
-    for i, mat in enumerate(matrices):
-        outfile_i = outfile.with_stem(f"{outfile.stem}-{i:0{width}}")
-        ret |= dump(
-            outfile_i,
-            mat,
-            upper_left,
-            lower_right,
-            max_escape_radius=max_escape_radius,
-            overwrite=overwrite,
-        )
-
-    # }}}
-
-    return ret
 
 
 # }}}

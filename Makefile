@@ -91,49 +91,4 @@ mat-default:			## Generate default test matrices
 		random --type fixed
 .PHONY: mat-default
 
-mat-structural:			## Convert example structural data to JSON
-	$(PYTHON) scripts/generate-exhibits.py \
-		--overwrite \
-		--outfile data/exhibit-structural.json \
-		--xlim '-10.25' '4.25' \
-		--ylim '-6.0' '6.0' \
-		--escape-radius '100.0' \
-		convert \
-		--variable-name 'w' \
-		--transpose --normalize \
-		data/Structural_Conn.mat
-.PHONY: mat-structural
-
-mat-rest:				## Convert example rest data to JSON
-	$(PYTHON) scripts/generate-exhibits.py \
-		--overwrite \
-		--outfile data/exhibit-task-rest.json \
-		--xlim '-0.3' '0.3' \
-		--ylim '-0.3' '0.3' \
-		--escape-radius '100.0' \
-		convert \
-		--variable-name 'w' \
-		--transpose --normalize \
-		data/Rest_LR_Task.mat
-.PHONY: mat-rest
-
-mat-emotion:			## Convert example emotion data to JSON
-	$(PYTHON) scripts/generate-exhibits.py \
-		--overwrite \
-		--outfile data/exhibit-task-emotion.json \
-		--xlim '-0.3' '0.3' \
-		--ylim '-0.3' '0.3' \
-		--escape-radius '100.0' \
-		convert \
-		--variable-name 'w' \
-		--transpose --normalize \
-		data/Emption_LR_Task.mat
-.PHONY: mat-emotion
-
-mat-clean:				## Clean up all generated JSON data
-	rm -rf data/exhibit-stuctural-*.json
-	rm -rf data/exhibit-task-rest-*.json
-	rm -rf data/exhibit-task-emption-*.json
-.PHONY: mat-clean
-
 # }}}
