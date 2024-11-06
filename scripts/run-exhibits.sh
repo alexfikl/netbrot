@@ -7,16 +7,16 @@ set -Eeuo pipefail
 
 function with_echo() {
     echo "+++" "$@"
-    "$@"
+    nice "$@"
 }
 
-suffix=$(date "+%Y%m%d-%H%M%S")
+suffix=$(date "+%Y%m%d")
 
 for filename in $@; do
     with_echo ./target/release/netbrot \
         --render mandelbrot \
-        --resolution 128 \
-        --maxit 256 \
-        --outfile "${filename%.json}-${suffix}.png" \
+        --resolution 1200 \
+        --maxit 512 \
+        --outfile "${filename%.json}-1200x1200-${suffix}.png" \
         "${filename}"
 done
