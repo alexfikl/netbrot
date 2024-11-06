@@ -9,7 +9,6 @@ import pathlib
 from typing import Any, TypedDict
 
 import numpy as np
-import numpy.linalg as la
 import rich.logging
 
 log = logging.getLogger(pathlib.Path(__file__).stem)
@@ -23,7 +22,7 @@ This script generates a collection of JSON files that can be used with the main
 files have a very specific format (so that they can be loaded by `serde`), so
 be careful when playing with them manually!
 
-This scrit generates some random NxN matrices of a desired type. Currently
+This script generates some random NxN matrices of a desired type. Currently
 this supports: `fixed` for some matrices we like, `feedforward` for lower
 triangular matrices, and `equalrow` for matrices with equal row sums.
 
@@ -47,8 +46,8 @@ Example:
 
 Array = np.ndarray[Any, np.dtype[Any]]
 
-DEFAULT_UPPER_LEFT = (-3.75, 2.5)
-DEFAULT_LOWER_RIGHT = (1.25, -2.5)
+DEFAULT_UPPER_LEFT = (-1.0, 1.0)
+DEFAULT_LOWER_RIGHT = (1.0, -1.0)
 
 
 def serde_matrix_format(mat: Array) -> list[Any]:
@@ -307,7 +306,7 @@ if __name__ == "__main__":
         "--outfile",
         type=pathlib.Path,
         default=None,
-        help="Basename for output files (named '{basename}-XX')",
+        help="Basename for output files (named '{basename}-XX.json')",
     )
     parser.add_argument(
         "--overwrite",
@@ -338,70 +337,44 @@ if __name__ == "__main__":
         help="Maximum escape radius",
     )
     parser.add_argument(
+        "-t",
+        "--type",
+        choices=("fixed", "feedforward", "equalrow"),
+        default="fixed",
+    )
+    parser.add_argument(
+        "-p",
+        "--parametric",
+        action="store_true",
+        help="Generate simple 2x2 matrices with from a parameter",
+    )
+    parser.add_argument(
+        "-n",
+        "--size",
+        default=2,
+        type=int,
+        help="Size of the matrix in exhibits (ignored for --parametric)",
+    )
+    parser.add_argument(
+        "-m",
+        "--count",
+        default=10,
+        type=int,
+        help="Number of exhibits to generate",
+    )
+    parser.add_argument(
         "-q",
         "--quiet",
         action="store_true",
         help="Only show error messages",
     )
-    subparsers = parser.add_subparsers()
+    args = parser.parse_args()
 
-    # convert matlab
-    parser_mat = subparsers.add_parser(
-        "convert",
-        formatter_class=HelpFormatter,
-        help="Convert from MATLAB .mat file",
-    )
-    parser_mat.add_argument("filename", type=pathlib.Path)
-    parser_mat.add_argument(
-        "-n",
-        "--variable-name",
-        action="append",
-        help="Name of the variable containing matrices in the .mat file",
-    )
-    parser_mat.add_argument(
-        "-t",
-        "--transpose",
-        action="store_true",
-        help="Transpose the matrix that is read from the .mat file",
-    )
-    parser_mat.add_argument(
-        "-z",
-        "--normalize",
-        action="store_true",
-        help="Normalize the matrices by their norm",
-    )
-    parser_mat.set_defaults(
-        func=lambda args: convert_matlab(
-            args.filename,
-            mat_variable_names=args.variable_name,
-            upper_left=(args.xlim[0], args.ylim[1]),
-            lower_right=(args.xlim[1], args.ylim[0]),
-            max_escape_radius=args.escape_radius,
-            outfile=args.outfile,
-            transpose=args.transpose,
-            normalize=args.normalize,
-            overwrite=args.overwrite,
-        )
-    )
+    if not args.quiet:
+        log.setLevel(logging.INFO)
 
-    # generate random matrices
-    parser_random = subparsers.add_parser(
-        "random",
-        formatter_class=HelpFormatter,
-        help="Generate random matrices",
-    )
-    parser_random.add_argument(
-        "-t", "--type", choices=("fixed", "feedforward", "equalrow"), default="fixed"
-    )
-    parser_random.add_argument("-p", "--parametric", action="store_true")
-    parser_random.add_argument(
-        "-n", "--size", default=2, type=int, help="Size of the matrix in exhibits"
-    )
-    parser_random.add_argument(
-        "-m", "--count", default=10, type=int, help="Number of exhibits to generate"
-    )
-    parser_random.set_defaults(
-        func=lambda args: generate_random_matrix(
+    raise SystemExit(
+        generate_random_matrix(
             args.size,
             args.count,
             mat_type=args.type,
@@ -413,10 +386,3 @@ if __name__ == "__main__":
             overwrite=args.overwrite,
         )
     )
-
-    args = parser.parse_args()
-
-    if not args.quiet:
-        log.setLevel(logging.INFO)
-
-    raise SystemExit(args.func(args))
