@@ -87,8 +87,8 @@ def main(
     savemat(
         outfile,
         {
-            f"{prefix}_rgb": np.array(imgs),
-            f"{prefix}_binary": np.array(grays),
+            f"{prefix}_rgb": np.array(imgs, dtype=np.uint8),
+            f"{prefix}_binary": np.array(grays, dtype=np.uint8),
         },
     )
     log.info("Saved image data in '%s'", outfile)

@@ -15,8 +15,8 @@ suffix=$(date "+%Y%m%d")
 for filename in $@; do
     with_echo ./target/release/netbrot \
         --render mandelbrot \
-        --resolution 1200 \
-        --maxit 512 \
+        --resolution 128 \
+        --maxit 128 \
         --outfile "${filename%.json}-1200x1200-${suffix}.png" \
         "${filename}"
 done
