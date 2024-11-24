@@ -5,7 +5,8 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 import numpy as np
 import numpy.linalg as la

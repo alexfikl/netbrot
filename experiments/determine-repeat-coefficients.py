@@ -28,7 +28,9 @@ def netbrot(z: Array, mat: Matrix, c: complex) -> Array:
 
 def find_coefficients(eq: sp.Poly, z: Array) -> dict[tuple[int, ...], sp.Expr]:
     return {
-        pows: eq.coeff_monomial(sp.prod([z_i**n_i for z_i, n_i in zip(z, pows)]))
+        pows: eq.coeff_monomial(
+            sp.prod([z_i**n_i for z_i, n_i in zip(z, pows, strict=True)])
+        )
         for pows in eq.monoms()
     }
 

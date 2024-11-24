@@ -101,7 +101,7 @@ class SympyToRustStringifier:
     def map_Pow(self, expr: sp.Pow) -> str:  # noqa: N802
         base, exp = expr.args
 
-        if isinstance(exp, (int, sp.Integer)):
+        if isinstance(exp, int | sp.Integer):
             return f"{self.rec(base)}.powi({self.rec(exp)})"
         else:
             return f"{self.rec(base)}.pow({self.rec(exp)})"
@@ -181,7 +181,9 @@ def netbrot(z: Array, mat: Matrix, c: complex) -> Array:
 def get_poly_coefficients(eq: sp.Poly, z: Array) -> dict[tuple[int, ...], sp.Expr]:
     return {
         pows: sp.simplify(
-            eq.coeff_monomial(sp.prod([z_i**n_i for z_i, n_i in zip(z, pows)]))
+            eq.coeff_monomial(
+                sp.prod([z_i**n_i for z_i, n_i in zip(z, pows, strict=True)])
+            )
         )
         for pows in eq.monoms()
     }
