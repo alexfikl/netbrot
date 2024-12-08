@@ -31,6 +31,9 @@ use clap::{Parser, ValueHint};
 use indicatif::ParallelProgressIterator;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
+use little_exif::exif_tag::ExifTag;
+use little_exif::metadata::Metadata;
+
 // {{{ Command-line parser
 
 #[derive(Parser, Debug)]
@@ -211,15 +214,22 @@ fn main() {
     let elapsed = now.elapsed().as_millis() as f32 / 1000.0;
     println!("Elapsed {}s!", elapsed);
 
-    match args.outfile {
-        Some(filename) => {
-            println!("Writing result to '{}'.", filename);
-            pixels.save(filename).unwrap();
-        }
-        None => {
-            let filename = Path::new(&args.exhibit).with_extension("png");
-            println!("Writing result to '{}'.", filename.display());
-            pixels.save(filename).unwrap();
-        }
-    };
+    let outfile = args.outfile.unwrap_or(args.exhibit);
+    let filename = Path::new(&outfile).with_extension("png");
+
+    println!("Writing result to '{}'.", filename.display());
+    pixels.save(&filename).unwrap();
+
+    println!("Writing metadata to '{}'.", filename.display());
+    let mut metadata = Metadata::new();
+    metadata.set_tag(ExifTag::ImageDescription(format!(
+        "[{}, {}, {}, {}, {}, {}]",
+        renderer.bbox.0,
+        renderer.bbox.1,
+        renderer.bbox.2,
+        renderer.bbox.3,
+        brot.escape_radius_squared.sqrt(),
+        brot.maxit
+    )));
+    metadata.write_to_file(&filename).unwrap();
 }
