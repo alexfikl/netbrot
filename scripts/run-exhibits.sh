@@ -11,12 +11,13 @@ function with_echo() {
 }
 
 suffix=$(date "+%Y%m%d")
+resolution='128'
 
 for filename in $@; do
     with_echo ./target/release/netbrot \
         --render mandelbrot \
-        --resolution 128 \
+        --resolution ${resolution} \
         --maxit 128 \
-        --outfile "${filename%.json}-1200x1200-${suffix}.png" \
+        --outfile "${filename%.json}-x${resolution}-${suffix}.png" \
         "${filename}"
 done
