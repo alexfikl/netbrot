@@ -8,7 +8,7 @@ use rand_distr::{Distribution, Normal};
 use crate::iterate::{Matrix, Netbrot, Vector};
 use crate::newton::{NewtonRaphson, NewtonRaphsonResult};
 
-/// {{{ polynomial solutions
+// {{{ polynomial solutions
 
 pub fn bezout_number(ndim: u32, n: u32) -> u32 {
     2_u32.pow(ndim).pow(n)
@@ -27,9 +27,9 @@ pub fn unique_poly_solutions(ndim: u32, n: u32) -> u32 {
         .sum::<u32>()
 }
 
-/// }}}
+// }}}
 
-/// {{{ functions
+// {{{ functions
 
 fn netbrot_compose(brot: &Netbrot, z: &Vector, n: u32) -> Vector {
     match n {
@@ -78,7 +78,7 @@ fn netbrot_compose_prime_fp(brot: &Netbrot, z: &Vector, n: u32) -> Matrix {
     result
 }
 
-/// }}}
+// }}}
 
 // {{{ random points
 
@@ -117,7 +117,7 @@ pub fn generate_random_vector<R: Rng + ?Sized>(rng: &mut R, ndim: usize) -> Vect
 
 // }}}
 
-/// {{{ find_unique_fixed_points
+// {{{ find_unique_fixed_points
 
 fn is_unique_fixed_point(
     fixedpoints: &[Vector],
