@@ -68,8 +68,12 @@ struct Cli {
 
     /// Starting point. When plotting the Mandelbrot set, this corresponds to
     /// z0 and when plotting the Julia set, this corresponds to c.
-    #[arg(short, long, default_values_t = vec![0.0, 0.0], num_args = 2, allow_hyphen_values = true)]
+    #[arg(long, default_values_t = vec![0.0, 0.0], num_args = 2, allow_hyphen_values = true)]
     point: Vec<f64>,
+
+    /// Bounding box for the rendering
+    #[arg(long, num_args = 4, allow_hyphen_values = true)]
+    bbox: Option<Vec<f64>>,
 }
 
 // {{ exhibits
@@ -131,11 +135,25 @@ fn main() {
     let args = Cli::parse();
     let exhibit = read_exhibit(args.exhibit.clone()).unwrap();
 
+    let (upper_left, lower_right) = match args.bbox {
+        Some(bbox) => (
+            Complex64 {
+                re: bbox[0],
+                im: bbox[3],
+            },
+            Complex64 {
+                re: bbox[1],
+                im: bbox[2],
+            },
+        ),
+        None => (exhibit.upper_left, exhibit.lower_right),
+    };
+
     let renderer = Renderer::new(
         args.resolution,
         // FIXME: make this a proper rectangle
-        (exhibit.upper_left.re, exhibit.lower_right.re),
-        (exhibit.lower_right.im, exhibit.upper_left.im),
+        (upper_left.re, lower_right.re),
+        (lower_right.im, upper_left.im),
         args.color,
         args.render,
     );
