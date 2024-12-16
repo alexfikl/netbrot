@@ -32,7 +32,7 @@ def set_recommended_matplotlib() -> None:
 
     defaults: dict[str, dict[str, Any]] = {
         "figure": {
-            "figsize": (16, 8),
+            "figsize": (8, 8),
             "dpi": 300,
             "constrained_layout.use": True,
         },
@@ -70,10 +70,18 @@ def set_recommended_matplotlib() -> None:
 # }}}
 
 
+def lerp(x: float, *, xfrom: tuple[float, float], xto: tuple[float, float]) -> float:
+    a, b = xfrom
+    t, s = xto
+
+    return t + (x - a) / (b - a) * (s - t)
+
+
 def parametrize_fourier(
     filenames: list[pathlib.Path],
     outfile: pathlib.Path | None,
     *,
+    bbox: tuple[float, float, float, float] | None = None,
     nmodes: int | None = None,
     eps: float = 5.0e-4,
     overwrite: bool = False,
@@ -91,12 +99,20 @@ def parametrize_fourier(
         log.error("'matplotlib' package not found.")
         return 1
 
-    if not overwrite and outfile is not None and outfile.exists():
+    if outfile is None:
+        outfile = pathlib.Path(f"{SCRIPT_PATH.stem}-results.npz")
+
+    if not overwrite and outfile.exists():
         log.error("Output file exists (use --overwrite): '%s'.", outfile)
         return 1
 
+    if bbox is None:
+        bbox = (-1.0, 1.0, -1.0, 1.0)
+    xmin, xmax, ymin, ymax = bbox
+
     set_recommended_matplotlib()
 
+    results = []
     for filename in filenames:
         if not filename.exists():
             log.error("File does not exist: '%s'.", filename)
@@ -138,45 +154,53 @@ def parametrize_fourier(
             cv2.imwrite(filename.with_stem(f"{filename.stem}-approx"), output)
 
         # get Fourier modes
-        x = approx[:, 0, 0] + 1j * approx[:, 0, 1]
-        xhat = np.fft.fft(x)
+        x = lerp(approx[:, 0, 0], xfrom=(0, img.shape[0]), xto=(xmin, xmax))
+        y = lerp(approx[:, 0, 1], xfrom=(0, img.shape[1]), xto=(ymin, ymax))
+        z = x + 1j * y
+        zhat = np.fft.fft(z)
 
         # resample to desired number of modes
         if nmodes is None:
-            xresampled = x
+            zresampled = z
         else:
-            k = np.fft.fftfreq(xhat.size, d=1.0 / xhat.size).reshape(-1, 1)
+            k = np.fft.fftfreq(zhat.size, d=1.0 / zhat.size).reshape(-1, 1)
             theta = np.linspace(0.0, 2.0 * np.pi, nmodes)
-            xresampled = np.einsum("i,ij->j", xhat, np.exp(1j * k * theta) / k.size)
-            xhat = np.fft.fft(xresampled)
+            zresampled = np.einsum("i,ij->j", zhat, np.exp(1j * k * theta) / k.size)
+            zhat = np.fft.fft(zresampled)
 
+        # draw fourier modes
         if debug:
-            # draw fourier modes
-            k = np.fft.fftfreq(xhat.size, d=1.0 / xhat.size)
+            k = np.fft.fftfreq(zhat.size, d=1.0 / zhat.size)
 
             fig = mp.figure()
             ax = fig.gca()
 
-            ax.plot(k, xhat.real, "o-", label="Real")
-            ax.plot(k, xhat.imag, "v-", label="Imag")
-            ax.set_xlim([-32, 32])
+            ax.plot(k, zhat.real, "o-", label="Real")
+            ax.plot(k, zhat.imag, "v-", label="Imag")
             ax.legend()
 
             fig.savefig(filename.with_stem(f"{filename.stem}-fourier"))
             mp.close(fig)
 
+        # draw fourier contour
         if debug:
-            # draw fourier contour
             fig = mp.figure()
             ax = fig.gca()
 
-            ax.plot(x.real, x.imag, "o-", label="Original")
-            ax.plot(xresampled.real, xresampled.imag, "o-", label="Fourier")
-            ax.set_aspect("equal")
+            if z.shape != zresampled.shape:
+                ax.plot(z.real, z.imag, "o-", label="Original")
+            ax.plot(zresampled.real, zresampled.imag, "o-", label="Fourier")
+
+            ax.set_xlim([xmin, xmax])
+            ax.set_ylim([ymin, ymax])
             ax.legend()
 
             fig.savefig(filename.with_stem(f"{filename.stem}-sample"))
             mp.close(fig)
+
+        results.append(zhat)
+
+    np.savez(outfile, modes=np.array(results, dtype=object))
 
     return 0
 
@@ -201,6 +225,13 @@ if __name__ == "__main__":
         type=pathlib.Path,
         default=None,
         help="Basename for output files",
+    )
+    parser.add_argument(
+        "--bbox",
+        nargs=4,
+        type=float,
+        default=(-1, 1, -1, 1),
+        help="The bounding box in physical coordinates for the images",
     )
     parser.add_argument(
         "--modes",
@@ -233,6 +264,7 @@ if __name__ == "__main__":
         parametrize_fourier(
             args.filenames,
             args.outfile,
+            bbox=args.bbox,
             nmodes=args.modes,
             overwrite=args.overwrite,
             debug=args.debug,
