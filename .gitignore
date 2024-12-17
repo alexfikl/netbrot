@@ -8,3 +8,4 @@ data/*.json
 /target
 *.png
 *.mat
+*.npz

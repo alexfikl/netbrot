@@ -16,9 +16,19 @@ log.addHandler(rich.logging.RichHandler())
 
 SCRIPT_PATH = pathlib.Path(__file__)
 SCRIPT_LONG_HELP = f"""\
+This script extracts a Fourier description of the boundary of a given fractal
+image generate by the main netbrot program. As expected, this is not going to
+catch much in the way of the fractal nature of the object, but it does give a
+reasonable approximation.
+
+We use the standard edge detection to get the countour and apply the
+Ramer-Douglas-Peucker algorithm to approximate the contour with a smaller number
+of line segments. We then apply a standard FFT to this approximation to obtain
+the Fourier modes.
+
 Example:
 
-    > {SCRIPT_PATH.name} exhibit-render.png
+    > {SCRIPT_PATH.name} --bbox -1.0 1.0 -1.0 1.0 exhibit-render.png
 """
 
 # {{{ plotting settings
