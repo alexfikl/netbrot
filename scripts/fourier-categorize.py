@@ -274,6 +274,14 @@ def categorize_fourier(
         for i in range(c.size):
             ax.text(c[i].real + offset, c[i].imag + offset, f"{i}", fontsize=10)
 
+        ax.set_xlim([-0.003, 0.003])
+
+    with axis(outfile.with_stem(f"{outfile.stem}-centroid-histogram")) as ax:
+        ax.hist2d(c.real, c.imag, bins=(8, 8), density=False)
+        ax.set_xlabel("$c_x$")
+        ax.set_ylabel("$c_y$")
+        ax.set_xlim([-0.003, 0.003])
+
     with axis(outfile.with_stem(f"{outfile.stem}-distance")) as ax:
         n = np.arange(len(distances))
         d_mean = np.array([np.mean(d) for d in distances])
@@ -284,19 +292,28 @@ def categorize_fourier(
 
     with axis(outfile.with_stem(f"{outfile.stem}-curvature")) as ax:
         n = np.arange(len(curvatures))
-        kappa_mean = np.array([np.mean(k) for k in curvatures])
-        kappa_std = np.array([np.std(k) for k in curvatures])
+        kappa_mean = np.array([np.median(k) for k in curvatures])
+        # kappa_std = np.array([np.std(k) for k in curvatures])
 
-        ax.fill_between(n, kappa_mean + kappa_std, kappa_mean - kappa_std, alpha=0.2)
+        # ax.fill_between(n, kappa_mean + kappa_std, kappa_mean - kappa_std, alpha=0.2)
         ax.plot(n, kappa_mean, "o-")
+
+    with axis(outfile.with_stem(f"{outfile.stem}-curvature-histogram")) as ax:
+        ax.hist(kappa_mean, bins=16, density=False, rwidth=0.8)
 
     with axis(outfile.with_stem(f"{outfile.stem}-perimeter")) as ax:
         perimeter = np.array(perimeters)
         ax.plot(perimeter, "o-")
 
+    with axis(outfile.with_stem(f"{outfile.stem}-perimeter-histogram")) as ax:
+        ax.hist(perimeter, bins=16, density=False, rwidth=0.8)
+
     with axis(outfile.with_stem(f"{outfile.stem}-area")) as ax:
         area = np.array(areas)
         ax.plot(area, "o-")
+
+    with axis(outfile.with_stem(f"{outfile.stem}-area-histogram")) as ax:
+        ax.hist(area, bins=16, density=False, rwidth=0.8)
 
     return 0
 
