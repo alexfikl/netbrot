@@ -19,9 +19,9 @@ rustfmt:						## Run rustfmt
 .PHONY: rustfmt
 
 rufffmt:						## Run ruff format
-	ruff format scripts experiments
-	ruff check --fix --select=I scripts experiments
-	ruff check --fix --select=RUF022 scripts experiments
+	ruff format scripts
+	ruff check --fix --select=I scripts
+	ruff check --fix --select=RUF022 scripts
 	@echo -e "\e[1;32mruff format clean!\e[0m"
 
 shfmt:							## Run shfmt format
@@ -46,7 +46,7 @@ reuse:			## Check REUSE license compliance
 .PHONY: reuse
 
 ruff:			## Run ruff checks over the source code
-	ruff check scripts experiments
+	ruff check scripts
 	@echo -e "\e[1;32mruff clean!\e[0m"
 .PHONY: ruff
 

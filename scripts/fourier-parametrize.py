@@ -5,9 +5,14 @@ from __future__ import annotations
 
 import logging
 import pathlib
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass
+from functools import cached_property
 from typing import Any
 
 import numpy as np
+import numpy.linalg as la
 import rich.logging
 
 log = logging.getLogger(pathlib.Path(__file__).stem)
@@ -30,6 +35,10 @@ Example:
 
     > {SCRIPT_PATH.name} --bbox -1.0 1.0 -1.0 1.0 exhibit-render.png
 """
+
+Array = np.ndarray[Any, np.dtype[Any]]
+Scalar = np.floating[Any] | np.complexfloating[Any]
+
 
 # {{{ plotting settings
 
@@ -77,7 +86,25 @@ def set_recommended_matplotlib() -> None:
         mp.rc(group, **params)
 
 
+@contextmanager
+def axis(filename: pathlib.Path) -> Iterator[Any]:
+    import matplotlib.pyplot as mp
+
+    fig = mp.figure()
+    ax = fig.gca()
+
+    try:
+        yield ax
+    finally:
+        log.info("Saving figure in '%s'.", filename)
+        fig.savefig(filename)
+        mp.close(fig)
+
+
 # }}}
+
+
+# {{{ parametrize
 
 
 def lerp(x: float, *, xfrom: tuple[float, float], xto: tuple[float, float]) -> float:
@@ -87,46 +114,39 @@ def lerp(x: float, *, xfrom: tuple[float, float], xto: tuple[float, float]) -> f
     return t + (x - a) / (b - a) * (s - t)
 
 
+def resample(modes: Array, n: int) -> Array:
+    m = modes.size // 2
+    fac = n / (2 * m)
+
+    if n < m:
+        result = np.fft.fftshift(modes)
+        result = result[m - n // 2 : m + n // 2]
+        result = fac * np.fft.ifftshift(result)
+    else:
+        result = np.zeros(n, dtype=modes.dtype)
+        result[:m] = fac * modes[:m]
+        result[-m:] = fac * modes[-m:]
+
+    return result
+
+
 def parametrize_fourier(
     filenames: list[pathlib.Path],
-    outfile: pathlib.Path | None,
     *,
-    bbox: tuple[float, float, float, float] | None = None,
-    nmodes: int | None = None,
+    bbox: tuple[float, float, float, float],
     eps: float = 5.0e-4,
     overwrite: bool = False,
     debug: bool = False,
-) -> int:
-    try:
-        import cv2
-    except ImportError:
-        log.error("'cv2' package not found.")
-        return 1
+) -> Array:
+    import cv2
 
-    try:
-        import matplotlib.pyplot as mp
-    except ImportError:
-        log.error("'matplotlib' package not found.")
-        return 1
-
-    if outfile is None:
-        outfile = pathlib.Path(f"{SCRIPT_PATH.stem}-results.npz")
-
-    if not overwrite and outfile.exists():
-        log.error("Output file exists (use --overwrite): '%s'.", outfile)
-        return 1
-
-    if bbox is None:
-        bbox = (-1.0, 1.0, -1.0, 1.0)
     xmin, xmax, ymin, ymax = bbox
-
-    set_recommended_matplotlib()
-
     results = []
+
     for filename in filenames:
         if not filename.exists():
             log.error("File does not exist: '%s'.", filename)
-            return 1
+            continue
 
         # read in the BGR image
         img = cv2.imread(filename)
@@ -161,58 +181,315 @@ def parametrize_fourier(
             # draw approximated contour
             output = img.copy()
             cv2.drawContours(output, [approx], -1, (0, 0, 255), 3)
-            cv2.imwrite(filename.with_stem(f"{filename.stem}-approx"), output)
+            cv2.imwrite(filename.with_stem(f"{filename.stem}-approx-dp"), output)
 
-        # get Fourier modes
+        # get interface points as complex variables in the given bbox
         x = lerp(approx[:, 0, 0], xfrom=(0, img.shape[0]), xto=(xmin, xmax))
         y = lerp(approx[:, 0, 1], xfrom=(0, img.shape[1]), xto=(ymin, ymax))
         z = x + 1j * y
+
+        # NOTE: roll the coefficients until the first one is on the y=0 line
+        while np.sign(y[0]) * z[0].imag > 0:
+            z = np.roll(z, 1)
+        z = np.roll(z, -1)
+
+        # get the Fourier modes
         zhat = np.fft.fft(z)
 
-        # resample to desired number of modes
-        if nmodes is None:
-            zresampled = z
-        else:
-            k = np.fft.fftfreq(zhat.size, d=1.0 / zhat.size).reshape(-1, 1)
-            theta = np.linspace(0.0, 2.0 * np.pi, nmodes)
-            zresampled = np.einsum("i,ij->j", zhat, np.exp(1j * k * theta) / k.size)
-            zhat = np.fft.fft(zresampled)
-
-        # draw fourier modes
+        # draw Fourier modes
         if debug:
             k = np.fft.fftfreq(zhat.size, d=1.0 / zhat.size)
 
-            fig = mp.figure()
-            ax = fig.gca()
+            with axis(filename.with_stem(f"{filename.stem}-fourier-modes")) as ax:
+                ax.plot(k, zhat.real, "o-", label="Real")
+                ax.plot(k, zhat.imag, "v-", label="Imag")
+                ax.legend()
 
-            ax.plot(k, zhat.real, "o-", label="Real")
-            ax.plot(k, zhat.imag, "v-", label="Imag")
-            ax.legend()
-
-            fig.savefig(filename.with_stem(f"{filename.stem}-fourier"))
-            mp.close(fig)
-
-        # draw fourier contour
+        # draw Fourier contour
         if debug:
-            fig = mp.figure()
-            ax = fig.gca()
+            with axis(filename.with_stem(f"{filename.stem}-fourier-contour")) as ax:
+                zfine = resample(resample(zhat, 98), 4 * zhat.size)
+                zfine = np.fft.ifft(zfine)
 
-            if z.shape != zresampled.shape:
-                ax.plot(z.real, z.imag, "o-", label="Original")
-            ax.plot(zresampled.real, zresampled.imag, "o-", label="Fourier")
+                ax.plot(z.real, z.imag, "o-", ms=2)
+                ax.plot(zfine.real, zfine.imag, "-")
+                ax.plot(z[0].real, z[0].imag, "o")
+                ax.plot(z[-1].real, z[-1].imag, "o")
 
-            ax.set_xlim([xmin, xmax])
-            ax.set_ylim([ymin, ymax])
-            ax.legend()
-
-            fig.savefig(filename.with_stem(f"{filename.stem}-sample"))
-            mp.close(fig)
+                ax.set_xlabel("$x$")
+                ax.set_ylabel("$y$")
+                ax.set_xlim([xmin, xmax])
+                ax.set_ylim([ymin, ymax])
 
         results.append(zhat)
 
-    np.savez(outfile, modes=np.array(results, dtype=object))
+    result = np.empty(len(results), dtype=object)
+    for i, value in enumerate(results):
+        result[i] = value
+
+    return result
+
+
+# }}}
+
+
+# {{{ curve
+
+
+def dot(x: Array, y: Array) -> Array:
+    return x.real * y.real + x.imag * y.imag
+
+
+def integrate(c: Curve, f: Array) -> Scalar:
+    # NOTE: integrating using a trapezoidal rule on a closed curve
+    w = 1.0 / f.size
+    return np.sum(f * c.jacobian * w)
+
+
+@dataclass
+class Curve:
+    zhat: Array
+    """Fourier modes describing the curve."""
+    z: Array
+    """Curve coordinates in the physical space."""
+
+    jacobian: Array
+    """Jacobian of the transformation at each point *z* (used in quadrature)."""
+    normal: Array
+    """Normal vector at each point *z*."""
+    kappa: Array
+    """Curvature at each point *z*."""
+
+    @cached_property
+    def area(self) -> Scalar:
+        return np.abs(integrate(self, 0.5 * dot(self.z, self.normal)))
+
+    @cached_property
+    def perimeter(self) -> Scalar:
+        return np.abs(integrate(self, np.ones_like(self.jacobian)))
+
+    @cached_property
+    def centroid(self) -> Array:
+        return integrate(self, 0.5 * dot(self.z, self.z) * self.normal) / self.area
+
+    @cached_property
+    def centroid_distance(self) -> Array:
+        return np.abs(self.z - self.centroid)
+
+
+def curve_geometry(zhat: Array) -> Curve:
+    z = np.fft.ifft(zhat)
+    k = 1.0j * np.fft.fftfreq(zhat.size, d=1.0 / zhat.size / (2.0 * np.pi))
+
+    dx = np.fft.ifft(k * zhat)
+    ddx = np.fft.ifft(k**2 * zhat)
+
+    jac = np.abs(dx)
+    normal = 1.0j * dx / jac
+    kappa = -(normal.real * ddx.real + normal.imag * ddx.imag) / jac**2
+
+    return Curve(zhat=zhat, z=z, jacobian=jac, normal=normal, kappa=kappa)
+
+
+def test_curve_circle() -> bool:
+    rng = np.random.default_rng(seed=42)
+    R = rng.uniform(1.0, 10.0)
+
+    centroid = 1.0 + 0.5j
+    theta = np.linspace(0.0, 2.0 * np.pi, 128, endpoint=False)[::-1]
+    z = centroid + R * np.exp(1j * theta)
+    zhat = np.fft.fft(z)
+
+    curve = curve_geometry(zhat)
+
+    error = la.norm(z - curve.z)
+    assert error < 1.0e-13, error
+
+    jacobian = 2.0 * np.pi * R
+    error = la.norm(jacobian - curve.jacobian)
+    assert error < 5.0e-12, error
+
+    normal = (z - centroid) / np.abs(z - centroid)
+    error = la.norm(normal - curve.normal)
+    assert error < 1.0e-13, error
+
+    kappa = 1 / R
+    error = la.norm(kappa - curve.kappa)
+    assert error < 5.0e-13, error
+
+    area = np.pi * R**2
+    error = la.norm(area - curve.area)
+    assert error < 2.0e-13, error
+
+    perimeter = 2.0 * np.pi * R
+    error = la.norm(perimeter - curve.perimeter)
+    assert error < 1.0e-13, error
+
+    error = la.norm(centroid - curve.centroid)
+    assert error < 1.0e-13, error
+
+    distance = np.abs(z - centroid)
+    error = la.norm(distance - curve.centroid_distance)
+    assert error < 1.0e-13, error
+
+    return True
+
+
+# }}}
+
+
+# {{{ export
+
+
+def main(
+    filenames: list[pathlib.Path],
+    outfile: pathlib.Path | None,
+    *,
+    bbox: tuple[float, float, float, float] | None = None,
+    nmodes: int | None = None,
+    eps: float = 5.0e-4,
+    overwrite: bool = False,
+    debug: bool = False,
+) -> int:
+    assert test_curve_circle()
+
+    try:
+        import cv2  # noqa: F401
+    except ImportError:
+        log.error("'cv2' package not found.")
+        return 1
+
+    try:
+        import matplotlib.pyplot as mp  # noqa: F401
+    except ImportError:
+        log.error("'matplotlib' package not found.")
+        return 1
+
+    if outfile is None:
+        outfile = pathlib.Path(f"{SCRIPT_PATH.stem}-results.npz")
+
+    if not overwrite and outfile.exists():
+        log.error("Output file exists (use --overwrite): '%s'.", outfile)
+        return 1
+
+    if bbox is None:
+        bbox = (-1.0, 1.0, -1.0, 1.0)
+
+    set_recommended_matplotlib()
+
+    modes = parametrize_fourier(
+        filenames,
+        bbox=bbox,
+        eps=eps,
+        overwrite=overwrite,
+        debug=debug,
+    )
+
+    # {{{ gather geometry information
+
+    centroids = np.empty(modes.size, dtype=np.complex128)
+    areas = np.empty(modes.size)
+    perimeters = np.empty(modes.size)
+    distances = np.empty(modes.size, dtype=object)
+    normals = np.empty(modes.size, dtype=object)
+    curvatures = np.empty(modes.size, dtype=object)
+
+    for i, mode in enumerate(modes):
+        if nmodes is not None:
+            mode = resample(mode, nmodes)  # noqa: PLW2901
+        log.info("Loaded exhibit %d with %d modes", i, mode.size)
+
+        curve = curve_geometry(mode)
+
+        if debug:
+            filename = outfile.with_stem(f"{outfile.stem}-{i:02d}-normal")
+            with axis(filename.with_suffix("")) as ax:
+                z = curve.z
+                ax.plot(z.real, z.imag)
+
+                cs = curve_geometry(resample(mode, 96))
+                zs = cs.z
+                ns = cs.normal
+                ax.plot(zs.real, zs.imag, "o-", lw=1)
+                ax.quiver(zs.real, zs.imag, ns.real, ns.imag)
+                if bbox:
+                    ax.set_xlim([bbox[0], bbox[1]])
+                    ax.set_ylim([bbox[2], bbox[3]])
+
+        centroids[i] = curve.centroid
+        areas[i] = curve.area
+        perimeters[i] = curve.perimeter
+
+        distances[i] = curve.centroid_distance
+        normals[i] = curve.normal
+        curvatures[i] = curve.kappa
+
+    np.savez(
+        outfile,
+        modes=modes,
+        centroids=centroids,
+        areas=areas,
+        perimeters=perimeters,
+        distances=distances,
+        normals=normals,
+        curvatures=curvatures,
+    )
+
+    # }}}
+
+    # {{{ plot
+
+    outfile = outfile.with_suffix("")
+
+    with axis(outfile.with_stem(f"{outfile.stem}-centroid")) as ax:
+        ax.plot(centroids.real, centroids.imag, "o")
+        ax.axvline(0.0, color="k", ls="--")
+
+        offset = 0.0001 * la.norm(centroids, ord=np.inf)
+        for i, c in enumerate(centroids):
+            ax.text(c.real + offset, c.imag + offset, f"{i}", fontsize=10)
+
+        ax.set_xlim([bbox[0] / 10, bbox[1] / 10])
+
+    with axis(outfile.with_stem(f"{outfile.stem}-centroid-histogram")) as ax:
+        ax.hist2d(centroids.real, centroids.imag, bins=(8, 8), density=False)
+        ax.set_xlabel("$c_x$")
+        ax.set_ylabel("$c_y$")
+        ax.set_xlim([bbox[0] / 10, bbox[1] / 10])
+
+    with axis(outfile.with_stem(f"{outfile.stem}-distance")) as ax:
+        n = np.arange(distances.size)
+        d_mean = np.array([np.mean(d) for d in distances])
+        d_std = np.array([np.std(d) for d in distances])
+
+        ax.fill_between(n, d_mean + d_std, d_mean - d_std, alpha=0.2)
+        ax.plot(n, d_mean, "o-")
+
+    with axis(outfile.with_stem(f"{outfile.stem}-curvature")) as ax:
+        n = np.arange(curvatures.size)
+        kappa = np.array([np.median(k) for k in curvatures])
+
+        ax.plot(n, kappa, "o-")
+
+    with axis(outfile.with_stem(f"{outfile.stem}-curvature-histogram")) as ax:
+        ax.hist(kappa, bins=16, density=False, rwidth=0.8)
+
+    with axis(outfile.with_stem(f"{outfile.stem}-perimeter")) as ax:
+        ax.plot(perimeters, "o-")
+
+    with axis(outfile.with_stem(f"{outfile.stem}-perimeter-histogram")) as ax:
+        ax.hist(perimeters, bins=16, density=False, rwidth=0.8)
+
+    with axis(outfile.with_stem(f"{outfile.stem}-area")) as ax:
+        ax.plot(areas, "o-")
+
+    with axis(outfile.with_stem(f"{outfile.stem}-area-histogram")) as ax:
+        ax.hist(areas, bins=16, density=False, rwidth=0.8)
 
     return 0
+
+
+# }}}
 
 
 if __name__ == "__main__":
@@ -271,7 +548,7 @@ if __name__ == "__main__":
         log.setLevel(logging.INFO)
 
     raise SystemExit(
-        parametrize_fourier(
+        main(
             args.filenames,
             args.outfile,
             bbox=args.bbox,
