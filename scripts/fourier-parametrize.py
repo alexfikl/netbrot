@@ -104,135 +104,6 @@ def axis(filename: pathlib.Path) -> Iterator[Any]:
 # }}}
 
 
-# {{{ parametrize
-
-
-def lerp(x: float, *, xfrom: tuple[float, float], xto: tuple[float, float]) -> float:
-    a, b = xfrom
-    t, s = xto
-
-    return t + (x - a) / (b - a) * (s - t)
-
-
-def resample(modes: Array, n: int) -> Array:
-    m = modes.size // 2
-    fac = n / (2 * m)
-
-    if n < m:
-        result = np.fft.fftshift(modes)
-        result = result[m - n // 2 : m + n // 2]
-        result = fac * np.fft.ifftshift(result)
-    else:
-        result = np.zeros(n, dtype=modes.dtype)
-        result[:m] = fac * modes[:m]
-        result[-m:] = fac * modes[-m:]
-
-    return result
-
-
-def parametrize_fourier(
-    filenames: list[pathlib.Path],
-    *,
-    bbox: tuple[float, float, float, float],
-    eps: float = 5.0e-4,
-    overwrite: bool = False,
-    debug: bool = False,
-) -> Array:
-    import cv2
-
-    xmin, xmax, ymin, ymax = bbox
-    results = []
-
-    for filename in filenames:
-        if not filename.exists():
-            log.error("File does not exist: '%s'.", filename)
-            continue
-
-        # read in the BGR image
-        img = cv2.imread(filename)
-        log.info("Loaded image '%s' of size %s.", filename, img.shape)
-
-        # transform it to binary 0/255
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        _, gray = cv2.threshold(gray, 10, 255, cv2.THRESH_BINARY_INV)
-
-        # find the biggest contour
-        contours, _ = cv2.findContours(gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        c = max(contours, key=cv2.contourArea)
-        perimeter = cv2.arcLength(c, closed=True)
-        log.info(
-            "> Contour area %.5e perimeter %.5e points %d",
-            cv2.contourArea(c),
-            perimeter,
-            len(c),
-        )
-
-        if debug:
-            # draw contours
-            output = img.copy()
-            cv2.drawContours(output, [c], -1, (0, 0, 255), 3)
-            cv2.imwrite(filename.with_stem(f"{filename.stem}-contour"), output)
-
-        # approximate the contour
-        approx = cv2.approxPolyDP(c, perimeter * eps, closed=True)
-        log.info("> Approx tolerance %.5e points %d", perimeter * eps, len(approx))
-
-        if debug:
-            # draw approximated contour
-            output = img.copy()
-            cv2.drawContours(output, [approx], -1, (0, 0, 255), 3)
-            cv2.imwrite(filename.with_stem(f"{filename.stem}-approx-dp"), output)
-
-        # get interface points as complex variables in the given bbox
-        x = lerp(approx[:, 0, 0], xfrom=(0, img.shape[0]), xto=(xmin, xmax))
-        y = lerp(approx[:, 0, 1], xfrom=(0, img.shape[1]), xto=(ymin, ymax))
-        z = x + 1j * y
-
-        # NOTE: roll the coefficients until the first one is on the y=0 line
-        while np.sign(y[0]) * z[0].imag > 0:
-            z = np.roll(z, 1)
-        z = np.roll(z, -1)
-
-        # get the Fourier modes
-        zhat = np.fft.fft(z)
-
-        # draw Fourier modes
-        if debug:
-            k = np.fft.fftfreq(zhat.size, d=1.0 / zhat.size)
-
-            with axis(filename.with_stem(f"{filename.stem}-fourier-modes")) as ax:
-                ax.plot(k, zhat.real, "o-", label="Real")
-                ax.plot(k, zhat.imag, "v-", label="Imag")
-                ax.legend()
-
-        # draw Fourier contour
-        if debug:
-            with axis(filename.with_stem(f"{filename.stem}-fourier-contour")) as ax:
-                zfine = resample(resample(zhat, 98), 4 * zhat.size)
-                zfine = np.fft.ifft(zfine)
-
-                ax.plot(z.real, z.imag, "o-", ms=2)
-                ax.plot(zfine.real, zfine.imag, "-")
-                ax.plot(z[0].real, z[0].imag, "o")
-                ax.plot(z[-1].real, z[-1].imag, "o")
-
-                ax.set_xlabel("$x$")
-                ax.set_ylabel("$y$")
-                ax.set_xlim([xmin, xmax])
-                ax.set_ylim([ymin, ymax])
-
-        results.append(zhat)
-
-    result = np.empty(len(results), dtype=object)
-    for i, value in enumerate(results):
-        result[i] = value
-
-    return result
-
-
-# }}}
-
-
 # {{{ curve
 
 
@@ -338,44 +209,145 @@ def test_curve_circle() -> bool:
 # }}}
 
 
-# {{{ export
+# {{{ parametrize
 
 
-def main(
+def lerp(x: float, *, xfrom: tuple[float, float], xto: tuple[float, float]) -> float:
+    a, b = xfrom
+    t, s = xto
+
+    return t + (x - a) / (b - a) * (s - t)
+
+
+def resample(modes: Array, n: int) -> Array:
+    m = modes.size // 2
+    fac = n / (2 * m)
+
+    if n < m:
+        result = np.fft.fftshift(modes)
+        result = result[m - n // 2 : m + n // 2]
+        result = fac * np.fft.ifftshift(result)
+    else:
+        result = np.zeros(n, dtype=modes.dtype)
+        result[:m] = fac * modes[:m]
+        result[-m:] = fac * modes[-m:]
+
+    return result
+
+
+def parametrize_fourier(
     filenames: list[pathlib.Path],
-    outfile: pathlib.Path | None,
     *,
-    bbox: tuple[float, float, float, float] | None = None,
-    nmodes: int | None = None,
+    bbox: tuple[float, float, float, float],
     eps: float = 5.0e-4,
     overwrite: bool = False,
     debug: bool = False,
-) -> int:
-    assert test_curve_circle()
+) -> Array:
+    import cv2
 
-    try:
-        import cv2  # noqa: F401
-    except ImportError:
-        log.error("'cv2' package not found.")
-        return 1
+    xmin, xmax, ymin, ymax = bbox
+    results = []
 
-    try:
-        import matplotlib.pyplot as mp  # noqa: F401
-    except ImportError:
-        log.error("'matplotlib' package not found.")
-        return 1
+    for filename in filenames:
+        if not filename.exists():
+            log.error("File does not exist: '%s'.", filename)
+            continue
 
+        # read in the BGR image
+        img = cv2.imread(filename)
+        log.info("Loaded image '%s' of size %s.", filename, img.shape)
+
+        # transform it to binary 0/255
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        _, gray = cv2.threshold(gray, 10, 255, cv2.THRESH_BINARY_INV)
+
+        # find the biggest contour
+        contours, _ = cv2.findContours(gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        c = max(contours, key=cv2.contourArea)
+        perimeter = cv2.arcLength(c, closed=True)
+        log.debug(
+            "> Contour area %.5e perimeter %.5e points %d",
+            cv2.contourArea(c),
+            perimeter,
+            len(c),
+        )
+
+        if debug:
+            # draw contours
+            output = img.copy()
+            cv2.drawContours(output, [c], -1, (0, 0, 255), 3)
+            cv2.imwrite(filename.with_stem(f"{filename.stem}-contour"), output)
+
+        # approximate the contour
+        approx = cv2.approxPolyDP(c, perimeter * eps, closed=True)
+        log.debug("> Approx tolerance %.5e points %d", perimeter * eps, len(approx))
+
+        if debug:
+            # draw approximated contour
+            output = img.copy()
+            cv2.drawContours(output, [approx], -1, (0, 0, 255), 3)
+            cv2.imwrite(filename.with_stem(f"{filename.stem}-approx-dp"), output)
+
+        # get interface points as complex variables in the given bbox
+        x = lerp(approx[:, 0, 0], xfrom=(0, img.shape[0]), xto=(xmin, xmax))
+        y = lerp(approx[:, 0, 1], xfrom=(0, img.shape[1]), xto=(ymin, ymax))
+        z = x + 1j * y
+
+        # NOTE: roll the coefficients until the first one is on the y=0 line
+        while np.sign(y[0]) * z[0].imag > 0:
+            z = np.roll(z, 1)
+        z = np.roll(z, -1)
+
+        # get the Fourier modes
+        zhat = np.fft.fft(z)
+
+        # draw Fourier modes
+        if debug:
+            k = np.fft.fftshift(np.fft.fftfreq(zhat.size, d=1.0 / zhat.size))
+
+            with axis(filename.with_stem(f"{filename.stem}-fourier-modes")) as ax:
+                ax.semilogy(k, np.fft.fftshift(np.abs(zhat.real)), "o-", label="Real")
+                ax.semilogy(k, np.fft.fftshift(np.abs(zhat.imag)), "o-", label="Imag")
+                ax.semilogy(k, 1.0 / np.abs(k) ** 1.01, "k-")
+                ax.legend()
+
+        # draw Fourier contour
+        if debug:
+            with axis(filename.with_stem(f"{filename.stem}-fourier-contour")) as ax:
+                zfine = resample(resample(zhat, 98), 4 * zhat.size)
+                zfine = np.fft.ifft(zfine)
+
+                ax.plot(z.real, z.imag, "o-", ms=2)
+                ax.plot(zfine.real, zfine.imag, "-")
+                ax.plot(z[0].real, z[0].imag, "o")
+                ax.plot(z[-1].real, z[-1].imag, "o")
+
+                ax.set_xlabel("$x$")
+                ax.set_ylabel("$y$")
+                ax.set_xlim([xmin, xmax])
+                ax.set_ylim([ymin, ymax])
+
+        results.append(zhat)
+
+    result = np.empty(len(results), dtype=object)
+    for i, value in enumerate(results):
+        result[i] = value
+
+    return result
+
+
+def save_geometry(
+    filenames: list[pathlib.Path],
+    outfile: pathlib.Path | None = None,
+    *,
+    bbox: tuple[float, float, float, float],
+    nmodes: int | None,
+    eps: float = 5.0e-4,
+    overwrite: bool = False,
+    debug: bool = False,
+) -> None:
     if outfile is None:
         outfile = pathlib.Path(f"{SCRIPT_PATH.stem}-results.npz")
-
-    if not overwrite and outfile.exists():
-        log.error("Output file exists (use --overwrite): '%s'.", outfile)
-        return 1
-
-    if bbox is None:
-        bbox = (-1.0, 1.0, -1.0, 1.0)
-
-    set_recommended_matplotlib()
 
     modes = parametrize_fourier(
         filenames,
@@ -384,8 +356,6 @@ def main(
         overwrite=overwrite,
         debug=debug,
     )
-
-    # {{{ gather geometry information
 
     centroids = np.empty(modes.size, dtype=np.complex128)
     areas = np.empty(modes.size)
@@ -397,7 +367,7 @@ def main(
     for i, mode in enumerate(modes):
         if nmodes is not None:
             mode = resample(mode, nmodes)  # noqa: PLW2901
-        log.info("Loaded exhibit %d with %d modes", i, mode.size)
+        log.info("Computing geometry for exhibit %d with %d modes", i, mode.size)
 
         curve = curve_geometry(mode)
 
@@ -426,6 +396,7 @@ def main(
 
     np.savez(
         outfile,
+        bbox=bbox,
         modes=modes,
         centroids=centroids,
         areas=areas,
@@ -434,6 +405,68 @@ def main(
         normals=normals,
         curvatures=curvatures,
     )
+    log.info("Saving geometry information: '%s'.", outfile)
+
+
+# }}}
+
+
+# {{{ export
+
+
+def main(
+    filenames: list[pathlib.Path],
+    outfile: pathlib.Path | None,
+    *,
+    bbox: tuple[float, float, float, float] | None = None,
+    nmodes: int | None = None,
+    eps: float = 5.0e-4,
+    overwrite: bool = False,
+    debug: bool = False,
+) -> int:
+    try:
+        import cv2  # noqa: F401
+    except ImportError:
+        log.error("'cv2' package not found.")
+        return 1
+
+    try:
+        import matplotlib.pyplot as mp  # noqa: F401
+    except ImportError:
+        log.error("'matplotlib' package not found.")
+        return 1
+
+    if bbox is None:
+        bbox = (-1.0, 1.0, -1.0, 1.0)
+
+    set_recommended_matplotlib()
+
+    # {{{ gather geometry information
+
+    if not (len(filenames) == 1 and filenames[0].suffix == ".npz"):
+        if not overwrite and outfile.exists():
+            log.error("Output file exists (use --overwrite): '%s'.", outfile)
+            return 1
+
+        save_geometry(
+            filenames,
+            outfile,
+            bbox=bbox,
+            nmodes=nmodes,
+            eps=eps,
+            overwrite=overwrite,
+            debug=debug,
+        )
+        filename = outfile
+    else:
+        (filename,) = filenames
+
+    data = np.load(filename, allow_pickle=True)
+    centroids = data["centroids"]
+    distances = data["distances"]
+    curvatures = data["curvatures"]
+    perimeters = data["perimeters"]
+    areas = data["areas"]
 
     # }}}
 
@@ -444,18 +477,31 @@ def main(
     with axis(outfile.with_stem(f"{outfile.stem}-centroid")) as ax:
         ax.plot(centroids.real, centroids.imag, "o")
         ax.axvline(0.0, color="k", ls="--")
+        ax.axhline(0.0, color="k", ls="--")
 
         offset = 0.0001 * la.norm(centroids, ord=np.inf)
         for i, c in enumerate(centroids):
             ax.text(c.real + offset, c.imag + offset, f"{i}", fontsize=10)
 
-        ax.set_xlim([bbox[0] / 10, bbox[1] / 10])
+        offset = 0.01 * la.norm(centroids.real, ord=np.inf)
+        xmin = min(0.0, np.min(centroids.real)) - offset
+        xmax = max(np.max(centroids.real), 0.0) + offset
+        ax.set_xlim([xmin, xmax])
+
+        offset = 0.01 * la.norm(centroids.imag, ord=np.inf)
+        ymin = min(0.0, np.min(centroids.imag)) - offset
+        ymax = max(np.max(centroids.imag), 0.0) + offset
+        ax.set_ylim([ymin, ymax])
+
+        ax.set_xlabel("$c_x$")
+        ax.set_ylabel("$c_y$")
 
     with axis(outfile.with_stem(f"{outfile.stem}-centroid-histogram")) as ax:
         ax.hist2d(centroids.real, centroids.imag, bins=(8, 8), density=False)
         ax.set_xlabel("$c_x$")
         ax.set_ylabel("$c_y$")
-        ax.set_xlim([bbox[0] / 10, bbox[1] / 10])
+        ax.set_xlim([xmin, xmax])
+        ax.set_ylim([ymin, ymax])
 
     with axis(outfile.with_stem(f"{outfile.stem}-distance")) as ax:
         n = np.arange(distances.size)
@@ -547,6 +593,10 @@ if __name__ == "__main__":
     if not args.quiet:
         log.setLevel(logging.INFO)
 
+    if args.debug:
+        log.setLevel(logging.DEBUG)
+
+    assert test_curve_circle()
     raise SystemExit(
         main(
             args.filenames,
