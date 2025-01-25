@@ -13,7 +13,7 @@ SPDX-FileCopyrightText = "2024 Alexandru Fikl <alexfikl@gmail.com>"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
-path = ["Cargo.toml", "Cargo.lock", "Makefile", "README.md", "pyproject.toml"]
+path = ["Cargo.toml", "Cargo.lock", "justfile", "README.md", "pyproject.toml"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2024 Alexandru Fikl <alexfikl@gmail.com>"
 SPDX-License-Identifier = "CC0-1.0"
