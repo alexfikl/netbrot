@@ -80,11 +80,17 @@ release:
 # }}}
 # {{{
 
-[doc('Remove all generated files')]
-purge:
+[doc('Remove various generated files')]
+clean:
+    rm -rf data/*.png
+    rm -rf *.mat
+    rm -rf *.npz
+    rm -rf *.zip
+
+[doc('Remove all generated files and caches')]
+purge: clean
     rm -rf target
     rm -rf .ruff_cache
-    rm -rf data/*.png
 
 [doc('Generate default test matrices')]
 exhibits:
