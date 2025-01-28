@@ -93,7 +93,7 @@ pub fn generate_random_points_in_ball<R: Rng + ?Sized>(
 ) -> Vector {
     let normal = Normal::new(0.0, 1.0).unwrap();
 
-    let factor: f64 = rng.gen();
+    let factor: f64 = rng.random();
     let components: Vec<f64> = (0..2 * ndim).map(|_| normal.sample(rng)).collect();
 
     let mut result = Vector::from_iterator(
@@ -107,7 +107,7 @@ pub fn generate_random_points_in_ball<R: Rng + ?Sized>(
 
 #[allow(dead_code)]
 pub fn generate_random_vector<R: Rng + ?Sized>(rng: &mut R, ndim: usize) -> Vector {
-    let components: Vec<f64> = (0..2 * ndim).map(|_| rng.gen()).collect();
+    let components: Vec<f64> = (0..2 * ndim).map(|_| rng.random()).collect();
 
     Vector::from_iterator(
         ndim,
@@ -165,7 +165,7 @@ pub fn find_fixed_points_by_newton(
     maxit: u32,
     eps: f64,
 ) -> Vec<Vector> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     let ndim = brot.mat.nrows();
     let npoints = unique_poly_solutions(ndim as u32, nperiod) as usize;
@@ -256,8 +256,8 @@ mod tests {
 
     #[test]
     fn test_generate_random_points_in_ball() {
-        let mut rng = rand::thread_rng();
-        let radius = 5.0 * rng.gen::<f64>();
+        let mut rng = rand::rng();
+        let radius = 5.0 * rng.random::<f64>();
 
         for ndim in 1..9 {
             for _ in 0..128 {
@@ -277,7 +277,7 @@ mod tests {
         let mat = dmatrix![c64(1.0, 0.0), c64(0.8, 0.0); c64(1.0, 0.0), c64(-0.5, 0.0)];
         let brot = Netbrot::new(&mat, maxit, escape_radius);
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // period = 1
         for _ in 0..32 {
@@ -359,7 +359,7 @@ mod tests {
             .with_rtol(eps / 10.0)
             .with_maxit(512);
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for z in fp.iter() {
             let zeps = z + generate_random_vector(&mut rng, ndim).scale(0.1);
 

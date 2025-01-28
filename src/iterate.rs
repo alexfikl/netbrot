@@ -217,7 +217,7 @@ mod tests {
 
         let mut jac = mat.clone_owned();
         let mut jac_est = mat.clone_owned();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let basis = Matrix::identity(ndim, ndim);
         let mut err = DVector::<f64>::zeros(7);
