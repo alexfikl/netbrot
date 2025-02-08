@@ -74,6 +74,10 @@ struct Cli {
     /// Bounding box for the rendering
     #[arg(long, num_args = 4, allow_hyphen_values = true)]
     bbox: Option<Vec<f64>>,
+
+    /// Period used when looking for attractive fixed points.
+    #[arg(long, default_value_t = 1)]
+    period: u32,
 }
 
 // {{ exhibits
@@ -223,7 +227,7 @@ fn main() {
                     .progress_count(nbands)
                     .for_each(|(i, band)| {
                         let local_renderer = renderer.to_slice(i);
-                        render_attractive_fixed_points(&local_renderer, &brot, band, 1);
+                        render_attractive_fixed_points(&local_renderer, &brot, band, args.period);
                     });
             }
         }
