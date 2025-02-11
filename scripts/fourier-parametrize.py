@@ -226,6 +226,15 @@ def lerp(x: float, *, xfrom: tuple[float, float], xto: tuple[float, float]) -> f
 
 
 def resample(modes: Array, n: int) -> Array:
+    if n == 1:
+        result = modes[0:1].copy()
+        return result
+
+    if modes.size == 1:
+        result = np.zeros(n, dtype=modes.dtype)
+        result[0] = modes[0]
+        return result
+
     m = modes.size // 2
     fac = n / (2 * m)
 
