@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 import pathlib
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from functools import cached_property
 from typing import Any
@@ -49,6 +49,19 @@ def set_recommended_matplotlib() -> None:
     except ImportError:
         return
 
+    # NOTE: preserve existing colors (the ones in "science" are ugly)
+    prop_cycle = mp.rcParams["axes.prop_cycle"]
+    with suppress(ImportError):
+        import scienceplots  # noqa: F401
+
+        mp.style.use(["science", "ieee"])
+
+    # NOTE: the 'petroff10' style is available for version >= 3.10.0 and changes
+    # the 'prop_cycle' to the 10 colors that are more accessible
+    if "petroff10" in mp.style.available:
+        mp.style.use("petroff10")
+        prop_cycle = mp.rcParams["axes.prop_cycle"]
+
     defaults: dict[str, dict[str, Any]] = {
         "figure": {
             "figsize": (8, 8),
@@ -65,7 +78,7 @@ def set_recommended_matplotlib() -> None:
             "grid.axis": "both",
             "grid.which": "both",
             # NOTE: preserve existing colors (the ones in "science" are ugly)
-            "prop_cycle": mp.rcParams["axes.prop_cycle"],
+            "prop_cycle": prop_cycle,
         },
         "xtick": {"labelsize": 20, "direction": "inout"},
         "ytick": {"labelsize": 20, "direction": "inout"},
@@ -74,13 +87,6 @@ def set_recommended_matplotlib() -> None:
         "xtick.minor": {"size": 4.0},
         "ytick.minor": {"size": 4.0},
     }
-
-    from contextlib import suppress
-
-    with suppress(ImportError):
-        import scienceplots  # noqa: F401
-
-        mp.style.use(["science", "ieee"])
 
     for group, params in defaults.items():
         mp.rc(group, **params)
