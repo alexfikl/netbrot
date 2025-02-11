@@ -291,7 +291,7 @@ def parametrize_fourier(
             # draw contours
             output = img.copy()
             cv2.drawContours(output, [c], -1, (0, 0, 255), 3)
-            cv2.imwrite(filename.with_stem(f"{filename.stem}-contour"), output)
+            cv2.imwrite(filename.with_stem(f"{filename.stem}-fourier-orig"), output)
 
         # approximate the contour
         approx = cv2.approxPolyDP(c, perimeter * eps, closed=True)
@@ -301,7 +301,7 @@ def parametrize_fourier(
             # draw approximated contour
             output = img.copy()
             cv2.drawContours(output, [approx], -1, (0, 0, 255), 3)
-            cv2.imwrite(filename.with_stem(f"{filename.stem}-approx-dp"), output)
+            cv2.imwrite(filename.with_stem(f"{filename.stem}-fourier-approx"), output)
 
         # get interface points as complex variables in the given bbox
         x = lerp(approx[:, 0, 0], xfrom=(0, img.shape[0]), xto=(xmin, xmax))
@@ -328,19 +328,23 @@ def parametrize_fourier(
 
         # draw Fourier contour
         if debug:
-            with axis(filename.with_stem(f"{filename.stem}-fourier-contour")) as ax:
-                zfine = resample(resample(zhat, 98), 4 * zhat.size)
-                zfine = np.fft.ifft(zfine)
+            for n in [2, 4, 6, 8, 10, 12, 16, 24, 32, 40, 48, 56, 64]:
+                with axis(
+                    filename.with_stem(f"{filename.stem}-fourier-contour-{n:02d}")
+                ) as ax:
+                    zfine = resample(resample(zhat, n), 4 * zhat.size)
+                    zfine = np.fft.ifft(zfine)
 
-                ax.plot(z.real, z.imag, "o-", ms=2)
-                ax.plot(zfine.real, zfine.imag, "-")
-                ax.plot(z[0].real, z[0].imag, "o")
-                ax.plot(z[-1].real, z[-1].imag, "o")
+                    ax.plot(z.real, z.imag, "o-", ms=2)
+                    ax.plot(zfine.real, zfine.imag, "-")
+                    ax.plot(z[0].real, z[0].imag, "o")
+                    ax.plot(z[-1].real, z[-1].imag, "o")
 
-                ax.set_xlabel("$x$")
-                ax.set_ylabel("$y$")
-                ax.set_xlim([xmin, xmax])
-                ax.set_ylim([ymin, ymax])
+                    ax.set_xlabel("$x$")
+                    ax.set_ylabel("$y$")
+                    ax.set_xlim([xmin, xmax])
+                    ax.set_ylim([ymin, ymax])
+                    ax.set_title(fr"\# modes = {n} / {zhat.size}")
 
         results.append(zhat)
 
