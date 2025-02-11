@@ -344,7 +344,7 @@ def parametrize_fourier(
                     ax.set_ylabel("$y$")
                     ax.set_xlim([xmin, xmax])
                     ax.set_ylim([ymin, ymax])
-                    ax.set_title(fr"\# modes = {n} / {zhat.size}")
+                    ax.set_title(rf"\# modes = {n} / {zhat.size}")
 
         results.append(zhat)
 
