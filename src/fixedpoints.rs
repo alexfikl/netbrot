@@ -221,7 +221,7 @@ pub fn fixed_point_type(brot: &Netbrot, fixedpoints: &Vec<Vector>, period: u32) 
     }
 
     // FIXME: under what tolerance do we want to call it attractive?
-    if lambda_min < 1.01 {
+    if lambda_min <= 1.0 {
         FixedPointType::Attractive(lambda_min)
     } else {
         FixedPointType::Repulsive(lambda_max)
