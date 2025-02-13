@@ -52,11 +52,11 @@ a `[z.real, z.imag]` tuple. The entries are listed column by column. The upper
 and lower corners of the rendering box are also given as `[x, y]` coordinates.
 Using such a file, you can just run
 ```bash
-netbrot --color orbit data/exhibit-example-0.json
+netbrot --color orbit data/netbrot-2x2.json
 ```
 to get nicely colored orbits or
 ```bash
-netbrot --color period data/exhibit-example-0.json
+netbrot --color period data/netbrot-2x2.json
 ```
 to get nicely colored periods.
 
@@ -70,7 +70,7 @@ python scripts/generate-exhibits.py random --size 5 --count 10 feedforward
 Example
 -------
 
-As a simple example, we take the matrix (see `data/exhibit-example-0.json`)
+As a simple example, we take the matrix (see `data/readme.json`)
 ```math
 A =
 \begin{bmatrix}
@@ -97,7 +97,7 @@ z_2^{n + 1}
 
 Obtained by running
 ```bash
-netbrot -r 2000 -m 128 data/exhibit-example-0.json
+netbrot -r 2000 -m 128 data/readme.json
 ```
 
 License
