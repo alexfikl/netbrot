@@ -244,7 +244,7 @@ pub fn render_attractive_fixed_points(
     for row in 0..resolution.1 {
         for column in 0..resolution.0 {
             local_brot.c = renderer.pixel_to_point((column, row));
-            let fp = find_fixed_points_by_newton(&local_brot, period, 4096, 1.0e-6);
+            let fp = find_fixed_points_by_newton(&local_brot, period, 4096, 1.0e-5);
             let nfps = unique_poly_solutions(ndim, period) as usize;
             if fp.len() < nfps {
                 nfails += 1;

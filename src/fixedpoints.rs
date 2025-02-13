@@ -158,7 +158,6 @@ fn is_unique_fixed_point(
 
 // {{{ find_fixed_points_by_newton
 
-#[allow(dead_code)]
 pub fn find_fixed_points_by_newton(
     brot: &Netbrot,
     nperiod: u32,
@@ -178,7 +177,7 @@ pub fn find_fixed_points_by_newton(
     let j = |z: &Vector| netbrot_compose_prime_fp(brot, z, nperiod);
     let solver = NewtonRaphson::new(f, j)
         .with_rtol(eps / 10.0)
-        .with_maxit(512);
+        .with_maxit(1024);
 
     while ntries < maxit && fixedpoints.len() < npoints {
         let z0 = generate_random_points_in_ball(&mut rng, ndim, radius);
@@ -186,7 +185,7 @@ pub fn find_fixed_points_by_newton(
         match solver.solve(&z0) {
             Ok(NewtonRaphsonResult { x: z, iteration: _ }) => {
                 if is_unique_fixed_point(&fixedpoints, &z, brot, nperiod, eps) {
-                    fixedpoints.push(z)
+                    fixedpoints.push(z);
                 }
             }
             Err(_) => continue,
@@ -210,19 +209,23 @@ pub enum FixedPointType {
 
 pub fn fixed_point_type(brot: &Netbrot, fixedpoints: &Vec<Vector>, period: u32) -> FixedPointType {
     let mut lambda_max = 0.0_f64;
+    let mut lambda_min = f64::INFINITY;
 
     for zstar in fixedpoints {
         let jac = netbrot_compose_prime(brot, zstar, period);
         let lambdas = jac.eigenvalues().unwrap();
         let lambda_max_i = lambdas.iter().fold(0.0, |acc, z| z.norm().max(acc));
 
-        if lambda_max_i < 1.01 {
-            return FixedPointType::Attractive(lambda_max_i);
-        }
+        lambda_min = lambda_min.min(lambda_max_i);
         lambda_max = lambda_max.max(lambda_max_i);
     }
 
-    FixedPointType::Repulsive(lambda_max)
+    // FIXME: under what tolerance do we want to call it attractive?
+    if lambda_min < 1.01 {
+        FixedPointType::Attractive(lambda_min)
+    } else {
+        FixedPointType::Repulsive(lambda_max)
+    }
 }
 
 // }}}
