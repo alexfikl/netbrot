@@ -96,11 +96,8 @@ purge: clean
     rm -rf target
     rm -rf .ruff_cache
 
-[doc("Generate default test matrices")]
-exhibits:
-    {{ PYTHON }} scripts/generate-exhibits.py \
-        --overwrite \
-        --outfile data/exhibit-example.json \
-        random --type fixed
+[doc("Generate README image")]
+readme-image:
+    @just run --resolution 2048 --maxit 128 data/readme.json -o docs/netbrot-2x2.png
 
 # }}}
