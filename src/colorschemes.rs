@@ -218,9 +218,10 @@ pub fn get_period_color(color: ColorType, p: usize) -> Rgb<u8> {
 /// Determine the color for a given fixed point eigenvalue magnitude.
 ///
 /// The magnitude is expected to be in [0, 1]. Anything out of this range is clamped.
-pub fn get_fixed_point_color(color: ColorType, magnitude: f64) -> Rgb<u8> {
-    let mut c = magnitude.clamp(0.0, 1.0);
-    c = (c * 16.0).round() / 16.0;
+pub fn get_fixed_point_color(color: ColorType, magnitude: f64, n: u32) -> Rgb<u8> {
+    let c = magnitude.clamp(0.0, 1.0);
+    // NOTE: this makes it look like it has some visible contour lines.
+    let c = (c * 16.0).round() / 16.0;
 
     match color {
         ColorType::EigenGray => fixed_point_color(c, &Rgb([0, 0, 0]), &Rgb([255, 255, 255])),
@@ -230,6 +231,9 @@ pub fn get_fixed_point_color(color: ColorType, magnitude: f64) -> Rgb<u8> {
         ColorType::EigenFire => fixed_point_color(c, &Rgb([68, 1, 84]), &Rgb([253, 231, 36])),
         // NOTE: Colors taken from the 'viridis' colormap in matplolib
         ColorType::EigenGreen => fixed_point_color(c, &Rgb([0, 0, 3]), &Rgb([251, 252, 191])),
+        ColorType::PeriodStack => COLOR_PALETTE_V1[(n as usize) % COLOR_PALETTE_V1.len()],
+        ColorType::PeriodEndesga => COLOR_PALETTE_V2[(n as usize) % COLOR_PALETTE_V2.len()],
+        ColorType::PeriodMatlab => COLOR_PALETTE_V3[(n as usize) % COLOR_PALETTE_V3.len()],
         ColorType::DefaultPalette | ColorType::EigenBlue => {
             fixed_point_color(1.0 - c, &Rgb([0, 0, 241]), &Rgb([241, 0, 0]))
         }

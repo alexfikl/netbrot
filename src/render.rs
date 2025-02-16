@@ -118,7 +118,7 @@ impl Renderer {
 // {{{ render Julia orbits
 
 pub fn render_julia_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]) {
-    let color = renderer.color_type;
+    let color_type = renderer.color_type;
     let resolution = renderer.resolution;
     assert!(pixels.len() == 3 * resolution.0 * resolution.1);
 
@@ -144,7 +144,7 @@ pub fn render_julia_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]
                 EscapeResult {
                     iteration: Some(n),
                     z,
-                } => get_smooth_orbit_color(color, n, z.norm(), maxit, escape_radius),
+                } => get_smooth_orbit_color(color_type, n, z.norm(), maxit, escape_radius),
             };
 
             let index = row * resolution.0 + 3 * column;
@@ -160,7 +160,7 @@ pub fn render_julia_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]
 // {{{ render Mandelbrot orbits
 
 pub fn render_mandelbrot_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]) {
-    let color = renderer.color_type;
+    let color_type = renderer.color_type;
     let resolution = renderer.resolution;
     assert!(pixels.len() == 3 * resolution.0 * resolution.1);
 
@@ -185,7 +185,7 @@ pub fn render_mandelbrot_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut
                 EscapeResult {
                     iteration: Some(n),
                     z,
-                } => get_smooth_orbit_color(color, n, z.norm(), maxit, escape_radius),
+                } => get_smooth_orbit_color(color_type, n, z.norm(), maxit, escape_radius),
             };
 
             let index = row * resolution.0 + 3 * column;
@@ -201,7 +201,7 @@ pub fn render_mandelbrot_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut
 // {{{ render periods
 
 pub fn render_period(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]) {
-    let color = renderer.color_type;
+    let color_type = renderer.color_type;
     let resolution = renderer.resolution;
     assert!(pixels.len() == 3 * resolution.0 * resolution.1);
 
@@ -212,7 +212,7 @@ pub fn render_period(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]) {
             local_brot.c = renderer.pixel_to_point((column, row));
             let color = match netbrot_orbit_period(&local_brot) {
                 None => Rgb([255, 255, 255]),
-                Some(period) => get_period_color(color, period % MAX_PERIODS),
+                Some(period) => get_period_color(color_type, period % MAX_PERIODS),
             };
 
             let index = row * resolution.0 + 3 * column;
@@ -234,7 +234,7 @@ pub fn render_attractive_fixed_points(
     period: u32,
 ) {
     let ndim = brot.z0.len() as u32;
-    let color = renderer.color_type;
+    let color_type = renderer.color_type;
     let resolution = renderer.resolution;
     assert!(pixels.len() == 3 * resolution.0 * resolution.1);
 
@@ -251,8 +251,10 @@ pub fn render_attractive_fixed_points(
             }
 
             let color = match fixed_point_type(&local_brot, &fp, period) {
-                FixedPointType::Attractive(lambda) => get_fixed_point_color(color, lambda),
-                FixedPointType::Repulsive(_) => Rgb([255, 255, 255]),
+                FixedPointType::Attractive { eig, stable } => {
+                    get_fixed_point_color(color_type, eig, stable)
+                }
+                FixedPointType::Repulsive { .. } => Rgb([255, 255, 255]),
             };
 
             let index = row * resolution.0 + 3 * column;

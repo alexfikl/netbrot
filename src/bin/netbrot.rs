@@ -116,7 +116,7 @@ fn display(renderer: &Renderer, brot: &Netbrot) {
         bbox.0, bbox.1, bbox.2, bbox.3
     );
     println!(
-        "Rendering:     {:?} with {:?}",
+        "Rendering:     {:?} colored by {:?}",
         renderer.render_type, renderer.color_type
     );
 

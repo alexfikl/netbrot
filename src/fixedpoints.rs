@@ -203,18 +203,23 @@ pub fn find_fixed_points_by_newton(
 // {{{ check attractiveness
 
 pub enum FixedPointType {
-    Attractive(f64),
-    Repulsive(f64),
+    Attractive { eig: f64, stable: u32 },
+    Repulsive { eig: f64 },
 }
 
 pub fn fixed_point_type(brot: &Netbrot, fixedpoints: &Vec<Vector>, period: u32) -> FixedPointType {
     let mut lambda_max = 0.0_f64;
     let mut lambda_min = f64::INFINITY;
+    let mut stable = 0;
 
     for zstar in fixedpoints {
         let jac = netbrot_compose_prime(brot, zstar, period);
         let lambdas = jac.eigenvalues().unwrap();
         let lambda_max_i = lambdas.iter().fold(0.0, |acc, z| z.norm().max(acc));
+
+        if lambda_max_i < 1.0 {
+            stable += 1;
+        }
 
         lambda_min = lambda_min.min(lambda_max_i);
         lambda_max = lambda_max.max(lambda_max_i);
@@ -222,9 +227,12 @@ pub fn fixed_point_type(brot: &Netbrot, fixedpoints: &Vec<Vector>, period: u32) 
 
     // FIXME: under what tolerance do we want to call it attractive?
     if lambda_min <= 1.0 {
-        FixedPointType::Attractive(lambda_min)
+        FixedPointType::Attractive {
+            eig: lambda_min,
+            stable,
+        }
     } else {
-        FixedPointType::Repulsive(lambda_max)
+        FixedPointType::Repulsive { eig: lambda_max }
     }
 }
 
