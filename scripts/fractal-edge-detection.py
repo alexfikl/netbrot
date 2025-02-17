@@ -54,7 +54,7 @@ def main(
     filenames: list[pathlib.Path],
     outfile: pathlib.Path | None,
     *,
-    extent: list[int] | None = None,
+    extent: tuple[float, float, float, float] | None = None,
     overwrite: bool = False,
 ) -> int:
     try:
@@ -81,7 +81,7 @@ def main(
 
     set_recommended_matplotlib()
 
-    fig = mp.Figure()
+    fig = mp.figure()
     ax = fig.gca()
     colors = cycle(mp.rcParams["axes.prop_cycle"].by_key()["color"])
 
@@ -131,7 +131,11 @@ def main(
         ax.imshow(colored, origin="lower", extent=extent)
 
     if outfile is None:
-        outfile = "result"
+        outfile = pathlib.Path("result")
+
+    if not outfile.suffix:
+        ext = mp.rcParams["savefig.format"]
+        outfile = outfile.with_suffix(f".{ext}")
 
     ax.set_xlabel("$x$")
     ax.set_ylabel("$y$")

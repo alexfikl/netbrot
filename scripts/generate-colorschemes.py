@@ -67,7 +67,11 @@ def main(
         return 1
 
     if outfile is None:
-        outfile = "colorschemes"
+        outfile = pathlib.Path("colorschemes")
+
+    if not outfile.suffix:
+        ext = mp.rcParams["savefig.format"]
+        outfile = outfile.with_suffix(f".{ext}")
 
     colorschemes = {}
     with open(filename, encoding="utf-8") as inf:
@@ -81,17 +85,17 @@ def main(
                 name = match.group(1)
                 log.info("Found colorscheme '%s'.", name)
 
-                colors = []
+                result = []
                 while True:
                     line = next(inf).strip()
                     if not (match := RGB_RE.match(line)):
                         break
 
                     rgb = [int(d) for d in match.groups()]
-                    colors.append(rgb)
+                    result.append(rgb)
 
-                log.info("Found %d colors in colorscheme '%s'", len(colors), name)
-                colorschemes[name] = np.array(colors)
+                log.info("Found %d colors in colorscheme '%s'", len(result), name)
+                colorschemes[name] = np.array(result)
         except StopIteration:
             pass
 
@@ -131,6 +135,8 @@ def main(
         fig.savefig(outfilename)
         log.info("Saved colorscheme to '%s'.", outfilename)
         mp.close(fig)
+
+    return 0
 
 
 # }}}

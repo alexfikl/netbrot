@@ -59,7 +59,7 @@ def estimate_escape_radius(mat: Array) -> float:
     n = mat.shape[0]
     sigma = np.linalg.svdvals(mat)
 
-    return 2.0 * np.sqrt(n) / np.min(sigma) ** 2
+    return float(2.0 * np.sqrt(n) / np.min(sigma) ** 2)
 
 
 def dump(

@@ -51,9 +51,7 @@ def main(
     edges = cv2.Canny(gray, 100, 200)
     edges = edges.astype(bool).astype(np.uint8)
 
-    with open(outfile, "w", encoding="utf-8") as outf:
-        np.savetxt(outf, edges, fmt="%d", delimiter=" ")
-
+    np.savetxt(outfile, edges, fmt="%d", delimiter=" ")
     log.info("Saved binary file: '%s'", outfile)
 
     return 0

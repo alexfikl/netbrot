@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
+from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from typing import Any
 
@@ -18,7 +19,8 @@ log.addHandler(rich.logging.RichHandler())
 SCRIPT_PATH = pathlib.Path(__file__)
 SCRIPT_LONG_HELP = ""
 
-Array = np.ndarray[Any, np.dtype[Any]]
+Array = np.ndarray[tuple[int, ...], np.dtype[np.floating]]
+
 DEFAULT_EXTENT = (-10.25, 4.25, -6.0, 6.0)
 
 
@@ -37,7 +39,7 @@ def set_recommended_matplotlib() -> None:
 
 
 @contextmanager
-def figure(filename: pathlib.Path, *, overwrite: bool = False):
+def figure(filename: pathlib.Path, *, overwrite: bool = False) -> Iterator[Any]:
     import matplotlib.pyplot as mp
 
     if not overwrite and filename.exists():
@@ -64,10 +66,14 @@ def image_mean_and_std(
     extent: tuple[float, float, float, float],
     overwrite: bool = False,
 ) -> None:
-    img_avg = 0
-    img_var = 0
+    if not images:
+        log.warning("No images have been provided")
+        return
 
-    for n, img in enumerate(images):
+    img_avg = images[0]
+    img_var = np.zeros_like(img_avg)
+
+    for n, img in enumerate(images[1:], start=1):
         img_var = n * (img_var + (img_avg - img) ** 2 / (n + 1)) / (n + 1)
         img_avg = (n * img_avg + img) / (n + 1)
 
@@ -135,7 +141,7 @@ def main(
         ext = mp.rcParams["savefig.format"]
         outfile = pathlib.Path(f"result.{ext}")
 
-    images = []
+    images: list[Array] = []
     for filename in filenames:
         if not filename.exists():
             log.error("File does not exist: '%s'.", filename)

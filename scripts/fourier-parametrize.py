@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from functools import cached_property
@@ -36,8 +36,9 @@ Example:
     > {SCRIPT_PATH.name} --bbox -1.0 1.0 -1.0 1.0 exhibit-render.png
 """
 
-Array = np.ndarray[Any, np.dtype[Any]]
-Scalar = np.floating[Any] | np.complexfloating[Any]
+Array = np.ndarray[tuple[int, ...], np.dtype[np.floating]]
+ComplexArray = np.ndarray[tuple[int, ...], np.dtype[np.complexfloating]]
+Scalar = np.inexact[Any, Any] | np.floating[Any] | np.complexfloating[Any]
 
 
 # {{{ plotting settings
@@ -75,11 +76,11 @@ def axis(filename: pathlib.Path) -> Iterator[Any]:
 # {{{ curve
 
 
-def dot(x: Array, y: Array) -> Array:
+def dot(x: ComplexArray, y: ComplexArray) -> Array:
     return x.real * y.real + x.imag * y.imag
 
 
-def integrate(c: Curve, f: Array) -> Scalar:
+def integrate(c: Curve, f: Array | ComplexArray) -> Scalar:
     # NOTE: integrating using a trapezoidal rule on a closed curve
     w = 1.0 / f.size
     return np.sum(f * c.jacobian * w)
@@ -87,28 +88,28 @@ def integrate(c: Curve, f: Array) -> Scalar:
 
 @dataclass
 class Curve:
-    zhat: Array
+    zhat: ComplexArray
     """Fourier modes describing the curve."""
-    z: Array
+    z: ComplexArray
     """Curve coordinates in the physical space."""
 
     jacobian: Array
     """Jacobian of the transformation at each point *z* (used in quadrature)."""
-    normal: Array
+    normal: ComplexArray
     """Normal vector at each point *z*."""
     kappa: Array
     """Curvature at each point *z*."""
 
     @cached_property
-    def area(self) -> Scalar:
-        return np.abs(integrate(self, 0.5 * dot(self.z, self.normal)))
+    def area(self) -> float:
+        return float(np.abs(integrate(self, 0.5 * dot(self.z, self.normal))))
 
     @cached_property
-    def perimeter(self) -> Scalar:
-        return np.abs(integrate(self, np.ones_like(self.jacobian)))
+    def perimeter(self) -> float:
+        return float(np.abs(integrate(self, np.ones_like(self.jacobian))))
 
     @cached_property
-    def centroid(self) -> Array:
+    def centroid(self) -> Scalar:
         return integrate(self, 0.5 * dot(self.z, self.z) * self.normal) / self.area
 
     @cached_property
@@ -116,7 +117,7 @@ class Curve:
         return np.abs(self.z - self.centroid)
 
 
-def curve_geometry(zhat: Array) -> Curve:
+def curve_geometry(zhat: ComplexArray) -> Curve:
     z = np.fft.ifft(zhat)
     k = 1.0j * np.fft.fftfreq(zhat.size, d=1.0 / zhat.size / (2.0 * np.pi))
 
@@ -180,14 +181,14 @@ def test_curve_circle() -> bool:
 # {{{ parametrize
 
 
-def lerp(x: float, *, xfrom: tuple[float, float], xto: tuple[float, float]) -> float:
+def lerp(x: Array, *, xfrom: tuple[float, float], xto: tuple[float, float]) -> Array:
     a, b = xfrom
     t, s = xto
 
     return t + (x - a) / (b - a) * (s - t)
 
 
-def resample(modes: Array, n: int) -> Array:
+def resample(modes: ComplexArray, n: int) -> ComplexArray:
     if n == 1:
         result = modes[0:1].copy()
         return result
@@ -219,7 +220,7 @@ def parametrize_fourier(
     eps: float = 5.0e-4,
     overwrite: bool = False,
     debug: bool = False,
-) -> Array:
+) -> Sequence[ComplexArray]:
     import cv2
 
     xmin, xmax, ymin, ymax = bbox
@@ -310,16 +311,12 @@ def parametrize_fourier(
 
         results.append(zhat)
 
-    result = np.empty(len(results), dtype=object)
-    for i, value in enumerate(results):
-        result[i] = value
-
-    return result
+    return results
 
 
 def save_geometry(
     filenames: list[pathlib.Path],
-    outfile: pathlib.Path | None = None,
+    outfile: pathlib.Path,
     *,
     bbox: tuple[float, float, float, float],
     nmodes: int | None,
@@ -327,9 +324,6 @@ def save_geometry(
     overwrite: bool = False,
     debug: bool = False,
 ) -> None:
-    if outfile is None:
-        outfile = pathlib.Path(f"{SCRIPT_PATH.stem}-results.npz")
-
     modes = parametrize_fourier(
         filenames,
         bbox=bbox,
@@ -338,12 +332,13 @@ def save_geometry(
         debug=debug,
     )
 
-    centroids = np.empty(modes.size, dtype=np.complex128)
-    areas = np.empty(modes.size)
-    perimeters = np.empty(modes.size)
-    distances = np.empty(modes.size, dtype=object)
-    normals = np.empty(modes.size, dtype=object)
-    curvatures = np.empty(modes.size, dtype=object)
+    size = len(modes)
+    centroids = np.empty(size, dtype=np.complex128)
+    areas = np.empty(size)
+    perimeters = np.empty(size)
+    distances = np.empty(size, dtype=object)
+    normals = np.empty(size, dtype=object)
+    curvatures = np.empty(size, dtype=object)
 
     for i, mode in enumerate(modes):
         if nmodes is not None:
@@ -419,6 +414,9 @@ def main(
 
     if bbox is None:
         bbox = (-1.0, 1.0, -1.0, 1.0)
+
+    if outfile is None:
+        outfile = pathlib.Path(f"{SCRIPT_PATH.stem}-results.npz")
 
     set_recommended_matplotlib()
 
