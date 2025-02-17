@@ -168,7 +168,7 @@ fn orbit_color_gray(c: f64) -> Rgb<u8> {
     Rgb([g, g, g])
 }
 
-fn fixed_point_color(c: f64, from: &Rgb<u8>, to: &Rgb<u8>) -> Rgb<u8> {
+fn interp(c: f64, from: &Rgb<u8>, to: &Rgb<u8>) -> Rgb<u8> {
     let n = c.clamp(0.0, 1.0);
     let cfrom = from.0;
     let cto = to.0;
@@ -207,10 +207,15 @@ pub fn get_smooth_orbit_color(
 /// The period color is determined from a fixed colormap. Currently there are
 /// three colormaps implemented with *version* taking values in [1, 2, 3].
 pub fn get_period_color(color: ColorType, p: usize) -> Rgb<u8> {
+    let (i, j) = (p / 8, p % 8);
+    let p = (j - 1) * 8 + i;
+
     match color {
-        ColorType::PeriodStack => COLOR_PALETTE_V1[p - 1],
-        ColorType::PeriodEndesga => COLOR_PALETTE_V2[p - 1],
-        ColorType::DefaultPalette | ColorType::PeriodMatlab => COLOR_PALETTE_V3[p - 1],
+        ColorType::PeriodStack => COLOR_PALETTE_V1[p % COLOR_PALETTE_V1.len()],
+        ColorType::PeriodEndesga => COLOR_PALETTE_V2[p % COLOR_PALETTE_V1.len()],
+        ColorType::DefaultPalette | ColorType::PeriodMatlab => {
+            COLOR_PALETTE_V3[p % COLOR_PALETTE_V1.len()]
+        }
         _ => panic!("Unsupported color type: {:?}", color),
     }
 }
@@ -223,19 +228,22 @@ pub fn get_fixed_point_color(color: ColorType, magnitude: f64, n: u32) -> Rgb<u8
     // NOTE: this makes it look like it has some visible contour lines.
     let c = (c * 16.0).round() / 16.0;
 
+    let (i, j) = (n / 8, n % 8);
+    let n = ((j - 1) * 8 + i) as usize;
+
     match color {
-        ColorType::EigenGray => fixed_point_color(c, &Rgb([0, 0, 0]), &Rgb([255, 255, 255])),
+        ColorType::EigenGray => interp(c, &Rgb([0, 0, 0]), &Rgb([255, 255, 255])),
         // NOTE: Colors taken from the 'magma' colormap in matplolib
         //      mpl.colormaps["magma"](0.0) and (1.0)
         // NOTE: this does not match the actual colormap!
-        ColorType::EigenFire => fixed_point_color(c, &Rgb([68, 1, 84]), &Rgb([253, 231, 36])),
+        ColorType::EigenFire => interp(c, &Rgb([68, 1, 84]), &Rgb([253, 231, 36])),
         // NOTE: Colors taken from the 'viridis' colormap in matplolib
-        ColorType::EigenGreen => fixed_point_color(c, &Rgb([0, 0, 3]), &Rgb([251, 252, 191])),
-        ColorType::PeriodStack => COLOR_PALETTE_V1[(n as usize) % COLOR_PALETTE_V1.len()],
-        ColorType::PeriodEndesga => COLOR_PALETTE_V2[(n as usize) % COLOR_PALETTE_V2.len()],
-        ColorType::PeriodMatlab => COLOR_PALETTE_V3[(n as usize) % COLOR_PALETTE_V3.len()],
+        ColorType::EigenGreen => interp(c, &Rgb([0, 0, 3]), &Rgb([251, 252, 191])),
+        ColorType::PeriodStack => COLOR_PALETTE_V1[n % COLOR_PALETTE_V1.len()],
+        ColorType::PeriodEndesga => COLOR_PALETTE_V2[n % COLOR_PALETTE_V2.len()],
+        ColorType::PeriodMatlab => COLOR_PALETTE_V3[n % COLOR_PALETTE_V3.len()],
         ColorType::DefaultPalette | ColorType::EigenBlue => {
-            fixed_point_color(1.0 - c, &Rgb([0, 0, 241]), &Rgb([241, 0, 0]))
+            interp(1.0 - c, &Rgb([0, 0, 241]), &Rgb([241, 0, 0]))
         }
         _ => panic!("Unsupported color type: {:?}", color),
     }
