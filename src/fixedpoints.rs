@@ -126,27 +126,28 @@ fn is_unique_fixed_point(
     nperiod: u32,
     eps: f64,
 ) -> bool {
-    if fixedpoints.is_empty() {
-        return true;
-    }
+    // NOTE: make sure the error is relative -- z is generally < 10
+    let eps = eps * z.norm();
 
-    // Check if fixed point already exists
-    let is_in = fixedpoints.iter().any(|z_j| (z - z_j).norm() < eps);
-    if is_in {
-        return false;
-    }
+    if !fixedpoints.is_empty() {
+        // Check if fixed point already exists: fails if duplicate in the list
+        let is_in = fixedpoints.iter().any(|z_j| (z - z_j).norm() < 10.0 * eps);
+        if is_in {
+            return false;
+        }
 
-    // Check if the point is a fixed point
-    let is_fp = netbrot_compose_fp(brot, z, nperiod).norm() < eps;
-    if !is_fp {
-        return false;
+        // Check if the point is a fixed point: fails if Newton did not converge
+        let is_fp = netbrot_compose_fp(brot, z, nperiod).norm() < eps;
+        if !is_fp {
+            return false;
+        }
     }
 
     // Check if it's a fixed point of a lower period
     let divisors: Vec<u32> = (1..nperiod).filter(|i| nperiod % i == 0).collect();
     let is_smaller_period = divisors
         .iter()
-        .any(|&j| netbrot_compose_fp(brot, z, j).norm() < eps);
+        .any(|&j| netbrot_compose_fp(brot, z, j).norm() < 10.0 * eps);
     if is_smaller_period {
         return false;
     }
@@ -195,6 +196,7 @@ pub fn find_fixed_points_by_newton(
         ntries += 1;
     }
 
+    // fixedpoints.sort_by(|a, b| a.norm().partial_cmp(&b.norm()).unwrap());
     fixedpoints
 }
 
