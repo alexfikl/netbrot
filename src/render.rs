@@ -232,6 +232,8 @@ pub fn render_attractive_fixed_points(
     brot: &Netbrot,
     pixels: &mut [u8],
     period: u32,
+    maxit: u32,
+    eps: f64,
 ) {
     let ndim = brot.z0.len() as u32;
     let color_type = renderer.color_type;

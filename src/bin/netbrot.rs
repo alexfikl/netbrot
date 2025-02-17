@@ -227,7 +227,14 @@ fn main() {
                     .progress_count(nbands)
                     .for_each(|(i, band)| {
                         let local_renderer = renderer.to_slice(i);
-                        render_attractive_fixed_points(&local_renderer, &brot, band, args.period);
+                        render_attractive_fixed_points(
+                            &local_renderer,
+                            &brot,
+                            band,
+                            args.period,
+                            4096,
+                            1.0e-5,
+                        );
                     });
             }
         }

@@ -207,17 +207,22 @@ pub enum FixedPointType {
     Repulsive { eig: f64 },
 }
 
-pub fn fixed_point_type(brot: &Netbrot, fixedpoints: &Vec<Vector>, period: u32) -> FixedPointType {
+pub fn fixed_point_type(
+    brot: &Netbrot,
+    fixedpoints: &Vec<Vector>,
+    nperiod: u32,
+    eps: f64,
+) -> FixedPointType {
     let mut lambda_max = 0.0_f64;
     let mut lambda_min = f64::INFINITY;
     let mut stable = 0;
 
     for zstar in fixedpoints {
-        let jac = netbrot_compose_prime(brot, zstar, period);
+        let jac = netbrot_compose_prime(brot, zstar, nperiod);
         let lambdas = jac.eigenvalues().unwrap();
         let lambda_max_i = lambdas.iter().fold(0.0, |acc, z| z.norm().max(acc));
 
-        if lambda_max_i < 1.0 {
+        if (lambda_max_i - 1.0).abs() < eps {
             stable += 1;
         }
 
@@ -226,7 +231,7 @@ pub fn fixed_point_type(brot: &Netbrot, fixedpoints: &Vec<Vector>, period: u32) 
     }
 
     // FIXME: under what tolerance do we want to call it attractive?
-    if lambda_min <= 1.0 {
+    if (lambda_min - 1.0).abs() < eps {
         FixedPointType::Attractive {
             eig: lambda_min,
             stable,
