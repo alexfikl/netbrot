@@ -1,0 +1,38 @@
+# This is a custom matplotlib style modify as needed
+
+# NOTE: this is the "gem12" color cycle from MATLAB
+# axes.prop_cycle: cycler('color', ['#0072bd', '#d95319', '#edb120', '#7e2f8e', '#77ac30', '#4dbeee', '#a2142f', '#ffd60a', '#6582fd', '#ff453a', '#00a3a3', '#cb845d'])
+# # NOTE: this is the "petrof10" color cycle from matplotlib
+axes.prop_cycle: cycler('color', ['3f90da', 'ffa90e', 'bd1f01', '94a4a2', '832db6', 'a96b59', 'e76300', 'b9ac70', '717581', '92dadd'])
+
+# figure
+figure.figsize: 8, 8
+figure.dpi: 300
+figure.constrained_layout.use: True
+# savefig.format: pdf
+
+# axes
+axes.labelsize: 28
+axes.titlesize: 28
+axes.grid: True
+axes.grid.axis: both
+axes.grid.which: both
+
+# ticks
+xtick.labelsize: 20
+xtick.direction: inout
+xtick.major.size: 6.5
+xtick.major.width: 1.5
+xtick.minor.size: 4.0
+
+ytick.labelsize: 20
+ytick.direction: inout
+ytick.major.size: 6.5
+ytick.major.width: 1.5
+ytick.minor.size: 4.0
+
+# others
+text.usetex: True
+legend.fontsize: 20
+lines.linewidth: 2
+lines.markersize: 5

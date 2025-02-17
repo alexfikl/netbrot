@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import Any
 
 import numpy as np
@@ -19,58 +19,21 @@ SCRIPT_PATH = pathlib.Path(__file__)
 SCRIPT_LONG_HELP = ""
 
 Array = np.ndarray[Any, np.dtype[Any]]
+DEFAULT_EXTENT = (-10.25, 4.25, -6.0, 6.0)
 
 
 # {{{ plotting settings
 
 
 def set_recommended_matplotlib() -> None:
-    try:
-        import matplotlib.pyplot as mp
-    except ImportError:
-        return
-
-    defaults: dict[str, dict[str, Any]] = {
-        "figure": {
-            "figsize": (16, 8),
-            "dpi": 300,
-            "constrained_layout.use": True,
-        },
-        "text": {"usetex": True},
-        "legend": {"fontsize": 20},
-        "lines": {"linewidth": 2, "markersize": 5},
-        "axes": {
-            "labelsize": 28,
-            "titlesize": 28,
-            "grid": True,
-            "grid.axis": "both",
-            "grid.which": "both",
-            # NOTE: preserve existing colors (the ones in "science" are ugly)
-            "prop_cycle": mp.rcParams["axes.prop_cycle"],
-        },
-        "xtick": {"labelsize": 20, "direction": "inout"},
-        "ytick": {"labelsize": 20, "direction": "inout"},
-        "xtick.major": {"size": 6.5, "width": 1.5},
-        "ytick.major": {"size": 6.5, "width": 1.5},
-        "xtick.minor": {"size": 4.0},
-        "ytick.minor": {"size": 4.0},
-    }
-
-    from contextlib import suppress
+    import matplotlib.pyplot as mp
 
     with suppress(ImportError):
         import scienceplots  # noqa: F401
 
         mp.style.use(["science", "ieee"])
 
-    for group, params in defaults.items():
-        mp.rc(group, **params)
-
-
-# }}}
-
-
-DEFAULT_EXTENT = (-10.25, 4.25, -6.0, 6.0)
+    mp.style.use(SCRIPT_PATH.parent / "default.mplstyle")
 
 
 @contextmanager
@@ -89,6 +52,9 @@ def figure(filename: pathlib.Path, *, overwrite: bool = False):
         fig.savefig(filename)
         log.info("Saving figure: '%s'.", filename)
         mp.close(fig)
+
+
+# }}}
 
 
 def image_mean_and_std(

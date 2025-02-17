@@ -44,7 +44,7 @@ Example:
 
 # {{{ utils
 
-Array = np.ndarray[Any, np.dtype[Any]]
+Array = np.ndarray[tuple[int, ...], np.dtype[np.floating]]
 
 DEFAULT_UPPER_LEFT = (-1.0, 1.0)
 DEFAULT_LOWER_RIGHT = (1.0, -1.0)
