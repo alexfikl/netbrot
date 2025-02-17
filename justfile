@@ -84,11 +84,18 @@ release:
 run *args: release
     nice ./target/release/netbrot {{ args }}
 
+[doc("Run attractive fixed points finder on a given exhibit")]
 attr filename period="1":
     @just run --render attractive --color period-matlab -r 1200 \
         --period {{ period }} \
         --outfile {{ filename }}-period{{ period }}.png \
         {{ filename }}.json
+
+[doc("Run attractive fixed points finder on a given exhibit up to period 3")]
+attr3 filename:
+    @just attr {{ filename }} 1
+    @just attr {{ filename }} 2
+    @just attr {{ filename }} 3
 
 [doc("Remove various generated files")]
 clean:
