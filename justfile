@@ -85,7 +85,7 @@ run *args: release
     nice ./target/release/netbrot {{ args }}
 
 attr filename period="1":
-    @just run --render attractive --color period-stack -r 1200 \
+    @just run --render attractive --color period-matlab -r 1200 \
         --period {{ period }} \
         --outfile {{ filename }}-period{{ period }}.png \
         {{ filename }}.json
