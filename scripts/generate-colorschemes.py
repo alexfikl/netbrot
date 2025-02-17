@@ -154,6 +154,8 @@ def main(
                 sq = Rectangle(
                     (x[j], y[i]), width, height, fill=True, color=colors[n] / 256
                 )
+
+                n = j * nrows + i
                 ax.text(x[j] + 0.1, y[i] + 0.1, f"{n}", fontsize=24)
                 ax.add_patch(sq)
 
