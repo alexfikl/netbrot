@@ -213,7 +213,7 @@ pub fn fixed_point_type(
     brot: &Netbrot,
     fixedpoints: &Vec<Vector>,
     nperiod: u32,
-    eps: f64,
+    _eps: f64,
 ) -> FixedPointType {
     let mut lambda_max = 0.0_f64;
     let mut lambda_min = f64::INFINITY;
@@ -224,7 +224,7 @@ pub fn fixed_point_type(
         let lambdas = jac.eigenvalues().unwrap();
         let lambda_max_i = lambdas.iter().fold(0.0, |acc, z| z.norm().max(acc));
 
-        if (lambda_max_i - 1.0).abs() < eps {
+        if lambda_max_i <= 1.0 {
             stable += 1;
         }
 
@@ -233,7 +233,7 @@ pub fn fixed_point_type(
     }
 
     // FIXME: under what tolerance do we want to call it attractive?
-    if (lambda_min - 1.0).abs() < eps {
+    if lambda_min <= 1.0 {
         FixedPointType::Attractive {
             eig: lambda_min,
             stable,
