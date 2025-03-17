@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: extractions/setup-just@v2
+    - uses: extractions/setup-just@v3
     - run: |
         just clippy
 
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: extractions/setup-just@v2
+    - uses: extractions/setup-just@v3
     - uses: Swatinem/rust-cache@v2
     - run: |
         just release
@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: extractions/setup-just@v2
+    - uses: extractions/setup-just@v3
     - uses: Swatinem/rust-cache@v2
     - run: |
         just test
