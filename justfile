@@ -70,6 +70,10 @@ mypy:
 # }}}
 # {{{ building
 
+[doc("Update Cargo.lock with new dependencies")]
+pin:
+    cargo update --verbose
+
 [doc("Run rust tests")]
 test $RUST_BACKTRACE="1":
     cargo test --all-features
