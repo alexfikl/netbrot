@@ -136,7 +136,8 @@ def main(
     escape_radius = estimate_escape_radius(mat)
     log.info("[NEW] radius: %.12e -> %.12e", data["escape_radius"], escape_radius)
 
-    data["escape_radius"] = escape_radius
+    if escape_radius < np.inf:
+        data["escape_radius"] = escape_radius
 
     # bounding box
     x = data["upper_left"][0]
