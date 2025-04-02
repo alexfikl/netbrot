@@ -38,7 +38,7 @@ Example:
 
 Array = np.ndarray[tuple[int, ...], np.dtype[np.floating]]
 ComplexArray = np.ndarray[tuple[int, ...], np.dtype[np.complexfloating]]
-Scalar = np.inexact[Any, Any] | np.floating[Any] | np.complexfloating[Any]
+Scalar = np.inexact[Any] | np.floating[Any] | np.complexfloating[Any]
 
 
 # {{{ plotting settings
@@ -58,6 +58,10 @@ def set_recommended_matplotlib() -> None:
 @contextmanager
 def axis(filename: pathlib.Path) -> Iterator[Any]:
     import matplotlib.pyplot as mp
+
+    if not filename.suffix:
+        ext = mp.rcParams["savefig.format"]
+        filename = filename.with_suffix(f".{ext}")
 
     fig = mp.figure(num=1)
     ax = fig.gca()
@@ -110,7 +114,7 @@ class Curve:
 
     @cached_property
     def centroid(self) -> Scalar:
-        return integrate(self, 0.5 * dot(self.z, self.z) * self.normal) / self.area
+        return integrate(self, 0.5 * dot(self.z, self.z) * self.normal) / self.area  # type: ignore[no-any-return]
 
     @cached_property
     def centroid_distance(self) -> Array:
@@ -291,15 +295,15 @@ def parametrize_fourier(
 
         # draw Fourier contour
         if debug:
-            for n in [2, 4, 6, 8, 10, 12, 16, 24, 32, 40, 48, 56, 64]:
+            for n in [2, 16, 32]:
                 with axis(
                     filename.with_stem(f"{filename.stem}-fourier-contour-{n:02d}")
                 ) as ax:
                     zfine = resample(resample(zhat, n), 4 * zhat.size)
                     zfine = np.fft.ifft(zfine)
 
-                    ax.plot(z.real, z.imag, "o-", ms=2)
-                    ax.plot(zfine.real, zfine.imag, "-")
+                    ax.plot(z.real, z.imag, "ko-", ms=2)
+                    ax.plot(zfine.real, zfine.imag, "-", lw=5)
                     ax.plot(z[0].real, z[0].imag, "o")
                     ax.plot(z[-1].real, z[-1].imag, "o")
 
@@ -370,17 +374,25 @@ def save_geometry(
         normals[i] = curve.normal
         curvatures[i] = curve.kappa
 
-    np.savez(
-        outfile,
-        bbox=bbox,
-        modes=modes,
-        centroids=centroids,
-        areas=areas,
-        perimeters=perimeters,
-        distances=distances,
-        normals=normals,
-        curvatures=curvatures,
-    )
+    result: dict[str, np.ndarray[Any, Any]] = {
+        "bbox": np.array(bbox),
+        "modes": np.array(modes, dtype=object),
+        "centroids": centroids,
+        "areas": areas,
+        "perimeters": perimeters,
+        "distances": distances,
+        "normals": normals,
+        "curvatures": curvatures,
+    }
+    if outfile.suffix == ".npz":
+        np.savez(outfile, allow_pickle=True, **result)
+    elif outfile.suffix == ".mat":
+        from scipy.io import savemat
+
+        savemat(str(outfile), result)
+    else:
+        raise ValueError(f"Unknown output file format: '{outfile}'")
+
     log.info("Saving geometry information: '%s'.", outfile)
 
 
@@ -440,12 +452,20 @@ def main(
     else:
         (filename,) = filenames
 
-    data = np.load(filename, allow_pickle=True)
-    centroids = data["centroids"]
-    distances = data["distances"]
-    curvatures = data["curvatures"]
-    perimeters = data["perimeters"]
-    areas = data["areas"]
+    if filename.suffix == ".npz":
+        data = np.load(filename, allow_pickle=True)
+    elif filename.suffix == ".mat":
+        from scipy.io import loadmat
+
+        data = loadmat(filename)
+    else:
+        raise ValueError(f"Unsupported file format: '{filename}'")
+
+    centroids = data["centroids"].squeeze()
+    distances = data["distances"].squeeze()
+    curvatures = data["curvatures"].squeeze()
+    perimeters = data["perimeters"].squeeze()
+    areas = data["areas"].squeeze()
 
     # }}}
 

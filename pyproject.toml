@@ -56,5 +56,6 @@ warn_unused_ignores = true
 module = [
     "cv2.*",
     "scienceplots.*",
+    "scipy.io.*",
 ]
 ignore_missing_imports = true
