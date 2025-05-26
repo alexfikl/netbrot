@@ -118,7 +118,7 @@ class Curve:
 
     @cached_property
     def centroid_distance(self) -> Array:
-        return np.abs(self.z - self.centroid)
+        return np.abs(self.z - self.centroid)  # type: ignore[no-any-return]
 
 
 def curve_geometry(zhat: ComplexArray) -> Curve:
