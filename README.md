@@ -2,7 +2,7 @@ Netbrot
 =======
 
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://spdx.org/licenses/MIT.html)
-[![Build Status](https://github.com/inducer/netbrot/actions/workflows/ci.yml/badge.svg)](https://github.com/inducer/netbrot/actions/workflows/ci.yml)
+[![Build Status](https://github.com/alexfikl/netbrot/actions/workflows/ci.yml/badge.svg)](https://github.com/alexfikl/netbrot/actions/workflows/ci.yml)
 [![Zenodo repository](https://zenodo.org/badge/DOI/10.5281/zenodo.15573719.svg)](https://doi.org/10.5281/zenodo.15573719)
 
 This repository contains some experiments for vector Mandelbrot sets. We look
@@ -30,6 +30,9 @@ just run
 ```bash
 cargo build --release
 ```
+
+A nightly build of a Windows executable can be found
+[on the Releases page](https://github.com/alexfikl/netbrot/releases/tag/nightly).
 
 Usage
 -----
