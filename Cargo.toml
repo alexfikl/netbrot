@@ -9,7 +9,7 @@ colors-transform = { "version" = "0.2" }
 image = { "version" = "0.25", "features" = ["png"] }
 indicatif = { "version" = "0.18", "features" = ["rayon"]}
 little_exif = { "version" = "0.6" }
-nalgebra = { "version" = "0.33", "features" = ["default", "serde-serialize"] }
+nalgebra = { "version" = "0.34", "features" = ["default", "serde-serialize"] }
 num = { "version" = "0.4" }
 num-traits = { "version" = "0.2" }
 rand = { "version" = "0.9" }
