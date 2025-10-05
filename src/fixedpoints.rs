@@ -22,7 +22,7 @@ pub fn unique_poly_solutions(ndim: u32, n: u32) -> u32 {
 
     let sqrt_n = (n as f64).sqrt() as u32;
     b - (1..sqrt_n + 1)
-        .filter(|i| n % i == 0)
+        .filter(|i| n.is_multiple_of(*i))
         .map(|i| 2_u32.pow(ndim).pow(i))
         .sum::<u32>()
 }
@@ -144,7 +144,9 @@ fn is_unique_fixed_point(
     }
 
     // Check if it's a fixed point of a lower period
-    let divisors: Vec<u32> = (1..nperiod).filter(|i| nperiod % i == 0).collect();
+    let divisors: Vec<u32> = (1..nperiod)
+        .filter(|i| nperiod.is_multiple_of(*i))
+        .collect();
     let is_smaller_period = divisors
         .iter()
         .any(|&j| netbrot_compose_fp(brot, z, j).norm() < 10.0 * eps);
