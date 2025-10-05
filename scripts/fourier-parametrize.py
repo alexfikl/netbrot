@@ -26,7 +26,7 @@ image generate by the main netbrot program. As expected, this is not going to
 catch much in the way of the fractal nature of the object, but it does give a
 reasonable approximation.
 
-We use the standard edge detection to get the countour and apply the
+We use the standard edge detection to get the contour and apply the
 Ramer-Douglas-Peucker algorithm to approximate the contour with a smaller number
 of line segments. We then apply a standard FFT to this approximation to obtain
 the Fourier modes.

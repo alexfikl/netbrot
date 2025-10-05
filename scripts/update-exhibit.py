@@ -196,7 +196,7 @@ if __name__ == "__main__":
         "--image",
         type=pathlib.Path,
         default=None,
-        help="A rendered image of the exibit used to determine the bounding box",
+        help="A rendered image of the exhibit used to determine the bounding box",
     )
     parser.add_argument(
         "--bbox",

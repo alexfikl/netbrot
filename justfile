@@ -44,7 +44,7 @@ lint: typos reuse ruff clippy mypy
 
 [doc("Run typos over the source code and documentation")]
 typos:
-    typos --sort --format=brief scripts
+    typos --sort
     @echo -e "\e[1;32mtypos clean!\e[0m"
 
 [doc("Check REUSE license compliance")]
