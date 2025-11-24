@@ -17,14 +17,14 @@ jobs:
     name: Licensing (REUSE)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: fsfe/reuse-action@v6
 
   typos:
     name: Spelling (typos)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: crate-ci/typos@master
 
   ruff:
@@ -32,7 +32,7 @@ jobs:
     name: Linting (ruff)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: chartboost/ruff-action@v1
 
   clippy:
@@ -40,7 +40,7 @@ jobs:
     name: Linting (clippy)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: extractions/setup-just@v3
     - run: |
         just clippy
@@ -50,7 +50,7 @@ jobs:
     name: Build (rust)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: extractions/setup-just@v3
     - uses: Swatinem/rust-cache@v2
     - run: |
@@ -62,7 +62,7 @@ jobs:
     name: Test (rust)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: extractions/setup-just@v3
     - uses: Swatinem/rust-cache@v2
     - run: |
@@ -75,7 +75,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
       - name: Build Executable
         run: |
