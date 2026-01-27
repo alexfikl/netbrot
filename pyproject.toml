@@ -46,16 +46,3 @@ lint.flake8-quotes.multiline-quotes = "double"
 lint.isort.required-imports = [
     "from __future__ import annotations",
 ]
-
-[tool.mypy]
-strict = true
-hide_error_codes = false
-warn_unused_ignores = true
-
-[[tool.mypy.overrides]]
-module = [
-    "cv2.*",
-    "scienceplots.*",
-    "scipy.io.*",
-]
-ignore_missing_imports = true

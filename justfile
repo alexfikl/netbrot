@@ -40,7 +40,7 @@ shfmt:
 # {{{ linting
 
 [doc("Run all linting checks over the source code")]
-lint: typos reuse ruff clippy mypy
+lint: typos reuse ruff clippy ty
 
 [doc("Run typos over the source code and documentation")]
 typos:
@@ -62,10 +62,10 @@ clippy:
     cargo clippy --all-targets --all-features
     @echo -e "\e[1;32mclippy clean!\e[0m"
 
-[doc("Run mypy type checking over scripts")]
-mypy:
-    {{ PYTHON }} -m mypy scripts/*.py
-    @echo -e "\e[1;32mmypy clean!\e[0m"
+[doc('Run ty checks over the source code')]
+ty:
+    ty check scripts
+    @echo -e "\e[1;32mty clean!\e[0m"
 
 # }}}
 # {{{ building
