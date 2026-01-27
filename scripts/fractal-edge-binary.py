@@ -21,7 +21,7 @@ def main(
     overwrite: bool = False,
 ) -> int:
     try:
-        import cv2
+        import cv2  # ty: ignore[unresolved-import]
     except ImportError:
         log.error("'cv2' package not found.")
         return 1

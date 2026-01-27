@@ -114,11 +114,11 @@ class Curve:
 
     @cached_property
     def centroid(self) -> Scalar:
-        return integrate(self, 0.5 * dot(self.z, self.z) * self.normal) / self.area  # type: ignore[no-any-return]
+        return integrate(self, 0.5 * dot(self.z, self.z) * self.normal) / self.area
 
     @cached_property
     def centroid_distance(self) -> Array:
-        return np.abs(self.z - self.centroid)  # type: ignore[no-any-return]
+        return np.abs(self.z - self.centroid)
 
 
 def curve_geometry(zhat: ComplexArray) -> Curve:
@@ -225,7 +225,7 @@ def parametrize_fourier(
     overwrite: bool = False,
     debug: bool = False,
 ) -> Sequence[ComplexArray]:
-    import cv2
+    import cv2  # ty: ignore[unresolved-import]
 
     xmin, xmax, ymin, ymax = bbox
     results = []
@@ -413,7 +413,7 @@ def main(
     debug: bool = False,
 ) -> int:
     try:
-        import cv2  # noqa: F401
+        import cv2  # ty: ignore[unresolved-import] # noqa: F401
     except ImportError:
         log.error("'cv2' package not found.")
         return 1
