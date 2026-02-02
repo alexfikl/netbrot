@@ -1,5 +1,4 @@
-Netbrot
-=======
+# Netbrot
 
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://spdx.org/licenses/MIT.html)
 [![Build Status](https://github.com/alexfikl/netbrot/actions/workflows/ci.yml/badge.svg)](https://github.com/alexfikl/netbrot/actions/workflows/ci.yml)
@@ -23,8 +22,7 @@ analogous to the standard scalar case:
 Additional math needed! Most of these ideas have no proofs at the moment, but
 seem fun to investigate!
 
-Install
--------
+## Install
 
 This is a Rust app and uses all the standard build infrastructure. To build it,
 just run
@@ -35,8 +33,7 @@ cargo build --release
 A nightly build of a Windows executable can be found
 [on the Releases page](https://github.com/alexfikl/netbrot/releases/tag/nightly).
 
-Usage
------
+## Usage
 
 This is currently **very experimental** and just meant for playing around. Even
 so, it's nicely parallelized with `rayon` and colored. The executable takes in
@@ -75,8 +72,7 @@ own. This script can be called as
 python scripts/generate-exhibits.py random --size 5 --count 10 feedforward
 ```
 
-Example
--------
+## Example
 
 As a simple example, we take the matrix (see `data/readme.json`)
 ```math
@@ -108,8 +104,15 @@ Obtained by running
 netbrot -r 2000 -m 128 data/readme.json
 ```
 
-License
--------
+## Acknowledgments
+
+Work on ``orbitkit`` was sponsored, in part, by the CNCS-UEFISCDI (Romania),
+under Project No. ROSUA-2024-0002.
+
+The views and opinions expressed herein do not necessarily reflect those of the
+funding agencies.
+
+## License
 
 The code is MIT licensed (see `LICENSES/MIT.txt`). It was originally copied
 from the Rust Programming example [here](https://github.com/ProgrammingRust/mandelbrot)
