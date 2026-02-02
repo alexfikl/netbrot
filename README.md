@@ -106,7 +106,7 @@ netbrot -r 2000 -m 128 data/readme.json
 
 ## Acknowledgments
 
-Work on ``orbitkit`` was sponsored, in part, by the CNCS-UEFISCDI (Romania),
+Work on ``netbrot`` was sponsored, in part, by the CNCS-UEFISCDI (Romania),
 under Project No. ROSUA-2024-0002.
 
 The views and opinions expressed herein do not necessarily reflect those of the
