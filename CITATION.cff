@@ -6,7 +6,7 @@ authors:
   orcid: "https://orcid.org/0000-0002-0552-5936"
 
 title: "netbrot: Mandelbrot sets on networks"
-version: 2025.6.0
+version: 2026.2.0
 identifiers:
 - description: Archived snapshot (all versions)
   type: doi
@@ -14,6 +14,6 @@ identifiers:
 - description: Archived snapshot (latest version)
   type: doi
   value: "10.5281/zenodo.15573720"
-date-released: "2025-06-02"
+date-released: "2026-02-19"
 repository-code: "https://github.com/alexfikl/netbrot"
 license: MIT

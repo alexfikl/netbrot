@@ -973,7 +973,7 @@ dependencies = [
 
 [[package]]
 name = "netbrot"
-version = "2025.6.0"
+version = "2026.2.0"
 dependencies = [
  "clap",
  "colors-transform",
