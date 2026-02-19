@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use num::complex::c64;
-use rand::Rng;
+use rand::RngExt;
 use rand_distr::{Distribution, Normal};
 
 use crate::iterate::{Matrix, Netbrot, Vector};
@@ -86,7 +86,7 @@ fn netbrot_compose_prime_fp(brot: &Netbrot, z: &Vector, n: u32) -> Matrix {
 ///
 /// This function uses the following method to generate a point in the sphere.
 ///
-pub fn generate_random_points_in_ball<R: Rng + ?Sized>(
+pub fn generate_random_points_in_ball<R: RngExt + ?Sized>(
     rng: &mut R,
     ndim: usize,
     radius: f64,
@@ -106,7 +106,7 @@ pub fn generate_random_points_in_ball<R: Rng + ?Sized>(
 }
 
 #[allow(dead_code)]
-pub fn generate_random_vector<R: Rng + ?Sized>(rng: &mut R, ndim: usize) -> Vector {
+pub fn generate_random_vector<R: RngExt + ?Sized>(rng: &mut R, ndim: usize) -> Vector {
     let components: Vec<f64> = (0..2 * ndim).map(|_| rng.random()).collect();
 
     Vector::from_iterator(
