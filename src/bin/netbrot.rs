@@ -19,8 +19,8 @@ use std::time::Instant;
 use netbrot::colorschemes::ColorType;
 use netbrot::iterate::{Netbrot, Vector};
 use netbrot::render::{
-    render_attractive_fixed_points, render_julia_orbit, render_mandelbrot_orbit, render_period,
-    RenderType, Renderer,
+    RenderType, Renderer, render_attractive_fixed_points, render_julia_orbit,
+    render_mandelbrot_orbit, render_period,
 };
 
 use nalgebra::DMatrix;

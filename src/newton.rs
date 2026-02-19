@@ -148,7 +148,7 @@ mod tests {
     use super::*;
 
     use nalgebra::{dmatrix, dvector};
-    use num::complex::{c64, Complex64};
+    use num::complex::{Complex64, c64};
 
     use crate::iterate::{Matrix, Vector};
 

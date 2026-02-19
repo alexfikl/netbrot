@@ -3,15 +3,15 @@
 
 use clap::ValueEnum;
 use image::{Rgb, RgbImage};
-use num::complex::{c64, Complex64};
+use num::complex::{Complex64, c64};
 
 use crate::colorschemes::{
-    get_fixed_point_color, get_period_color, get_smooth_orbit_color, ColorType,
+    ColorType, get_fixed_point_color, get_period_color, get_smooth_orbit_color,
 };
 use crate::fixedpoints::{
-    find_fixed_points_by_newton, fixed_point_type, unique_poly_solutions, FixedPointType,
+    FixedPointType, find_fixed_points_by_newton, fixed_point_type, unique_poly_solutions,
 };
-use crate::iterate::{netbrot_orbit, netbrot_orbit_period, EscapeResult, Netbrot, Vector};
+use crate::iterate::{EscapeResult, Netbrot, Vector, netbrot_orbit, netbrot_orbit_period};
 
 pub const MAX_PERIODS: usize = 20;
 pub const PERIOD_WINDOW: usize = 2 * MAX_PERIODS;

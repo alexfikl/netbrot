@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2024 Alexandru Fikl <alexfikl@gmail.com>
 // SPDX-License-Identifier: MIT
 
-use num::complex::{c64, Complex64};
+use num::complex::{Complex64, c64};
 
 use nalgebra::{DMatrix, DVector};
 
