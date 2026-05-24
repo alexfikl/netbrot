@@ -36,6 +36,7 @@ lint.ignore = [
     "PLR0914", # too-many-variables
     "PLR0915", # too-many-statements
     "PLR2004", # magic-value-comparison
+    "PLW0717", # try-clause-has-too-many-statements
     "S101",    # assert
     "S102",    # exec-builtin
     "UP037",   # quoted-annotation
