@@ -74,12 +74,166 @@ pub struct EscapeResult {
     pub z: Vector,
 }
 
+/// Escape-time result optimized for rendering (avoids retaining the full state vector).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct OrbitEscape {
+    /// Iteration at which the point escaped, or `None` if it stayed bounded.
+    pub iteration: Option<usize>,
+    /// Euclidean norm of *z* when escaped (only meaningful if `iteration` is `Some`).
+    pub z_norm: f64,
+}
+
 /// Period of a point, if it does not escape.
 type PeriodResult = Option<usize>;
 
 // }}}
 
 // {{{ escape
+
+#[inline]
+fn complex_norm_squared(z: Complex64) -> f64 {
+    z.re * z.re + z.im * z.im
+}
+
+/// Specialized 1D orbit (scalar complex state).
+#[inline]
+pub fn netbrot_orbit_escape_1d(
+    a: Complex64,
+    z: Complex64,
+    c: Complex64,
+    maxit: usize,
+    escape_radius_squared: f64,
+) -> OrbitEscape {
+    let mut z = z;
+    let mut w = a * z;
+
+    for i in 0..maxit {
+        let norm_sq = complex_norm_squared(z);
+        if norm_sq > escape_radius_squared {
+            return OrbitEscape {
+                iteration: Some(i),
+                z_norm: norm_sq.sqrt(),
+            };
+        }
+
+        z = w * w + c;
+        w = a * z;
+    }
+
+    OrbitEscape {
+        iteration: None,
+        z_norm: 0.0,
+    }
+}
+
+/// Specialized 2D orbit with stack-allocated state (no heap allocations in the loop).
+#[allow(clippy::too_many_arguments)]
+#[inline]
+pub fn netbrot_orbit_escape_2d(
+    a00: Complex64,
+    a01: Complex64,
+    a10: Complex64,
+    a11: Complex64,
+    z0: Complex64,
+    z1: Complex64,
+    c: Complex64,
+    maxit: usize,
+    escape_radius_squared: f64,
+) -> OrbitEscape {
+    let mut z0 = z0;
+    let mut z1 = z1;
+    let mut w0 = a00 * z0 + a01 * z1;
+    let mut w1 = a10 * z0 + a11 * z1;
+
+    for i in 0..maxit {
+        let norm_sq = complex_norm_squared(z0) + complex_norm_squared(z1);
+        if norm_sq > escape_radius_squared {
+            return OrbitEscape {
+                iteration: Some(i),
+                z_norm: norm_sq.sqrt(),
+            };
+        }
+
+        z0 = w0 * w0 + c;
+        z1 = w1 * w1 + c;
+        w0 = a00 * z0 + a01 * z1;
+        w1 = a10 * z0 + a11 * z1;
+    }
+
+    OrbitEscape {
+        iteration: None,
+        z_norm: 0.0,
+    }
+}
+
+/// General N-dimensional orbit with reusable buffers (no per-iteration allocations).
+pub fn netbrot_orbit_escape_ndim(
+    mat: &Matrix,
+    z: &mut Vector,
+    c: Complex64,
+    maxit: usize,
+    escape_radius_squared: f64,
+    matz: &mut Vector,
+) -> OrbitEscape {
+    mat.mul_to(z, matz);
+
+    for i in 0..maxit {
+        let norm_sq: f64 = z.iter().map(|zi| zi.norm_sqr()).sum();
+        if norm_sq > escape_radius_squared {
+            return OrbitEscape {
+                iteration: Some(i),
+                z_norm: norm_sq.sqrt(),
+            };
+        }
+
+        for (zi, wi) in z.iter_mut().zip(matz.iter()) {
+            *zi = wi * wi + c;
+        }
+        mat.mul_to(z, matz);
+    }
+
+    OrbitEscape {
+        iteration: None,
+        z_norm: 0.0,
+    }
+}
+
+/// Compute escape time for rendering. Dispatches to specialized kernels when possible.
+pub fn netbrot_orbit_escape(brot: &Netbrot) -> OrbitEscape {
+    let n = brot.z0.len();
+    match n {
+        1 => netbrot_orbit_escape_1d(
+            brot.mat[(0, 0)],
+            brot.z0[0],
+            brot.c,
+            brot.maxit,
+            brot.escape_radius_squared,
+        ),
+        2 => netbrot_orbit_escape_2d(
+            brot.mat[(0, 0)],
+            brot.mat[(0, 1)],
+            brot.mat[(1, 0)],
+            brot.mat[(1, 1)],
+            brot.z0[0],
+            brot.z0[1],
+            brot.c,
+            brot.maxit,
+            brot.escape_radius_squared,
+        ),
+        _ => {
+            let mut z = brot.z0.clone();
+            let mut matz = Vector::zeros(n);
+            netbrot_orbit_escape_ndim(
+                &brot.mat,
+                &mut z,
+                brot.c,
+                brot.maxit,
+                brot.escape_radius_squared,
+                &mut matz,
+            )
+        }
+    }
+}
 
 /// Compute the escape time for the quadratic Netbrot map
 ///
@@ -91,29 +245,19 @@ type PeriodResult = Option<usize>;
 /// $c$ is a complex constant.
 pub fn netbrot_orbit(brot: &Netbrot) -> EscapeResult {
     let mut z = brot.z0.clone();
-    let mat = &brot.mat;
-    let c = brot.c;
-    let maxit = brot.maxit;
-    let escape_radius_squared = brot.escape_radius_squared;
-
-    let mut matz = brot.z0.clone();
-    mat.mul_to(&z, &mut matz);
-
-    for i in 0..maxit {
-        if z.norm_squared() > escape_radius_squared {
-            return EscapeResult {
-                iteration: Some(i),
-                z,
-            };
-        }
-
-        z = matz.component_mul(&matz).add_scalar(c);
-        mat.mul_to(&z, &mut matz);
-    }
+    let mut matz = Vector::zeros(z.len());
+    let escape = netbrot_orbit_escape_ndim(
+        &brot.mat,
+        &mut z,
+        brot.c,
+        brot.maxit,
+        brot.escape_radius_squared,
+        &mut matz,
+    );
 
     EscapeResult {
-        iteration: None,
-        z: z.clone(),
+        iteration: escape.iteration,
+        z,
     }
 }
 
