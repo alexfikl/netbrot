@@ -11,7 +11,10 @@ use crate::colorschemes::{
 use crate::fixedpoints::{
     FixedPointType, find_fixed_points_by_newton, fixed_point_type, unique_poly_solutions,
 };
-use crate::iterate::{EscapeResult, Netbrot, Vector, netbrot_orbit, netbrot_orbit_period};
+use crate::iterate::{
+    Netbrot, OrbitEscape, Vector, netbrot_orbit_escape_2d, netbrot_orbit_escape_ndim,
+    netbrot_orbit_period,
+};
 
 pub const MAX_PERIODS: usize = 20;
 pub const PERIOD_WINDOW: usize = 2 * MAX_PERIODS;
@@ -52,7 +55,12 @@ impl Renderer {
         color_type: ColorType,
         render_type: RenderType,
     ) -> Self {
-        let ratio = (xlim.1 - xlim.0) / (ylim.1 - ylim.0);
+        let mut ratio = (xlim.1 - xlim.0) / (ylim.1 - ylim.0);
+        if ratio.is_nan() || ratio.is_infinite() {
+            ratio = 1.0;
+        }
+        // Clamp ratio to prevent generating ridiculously large textures that crash egui
+        let ratio = ratio.abs().clamp(0.01, 10.0);
         let r = resolution as f64;
 
         Renderer {
@@ -115,6 +123,30 @@ impl Renderer {
 
 // }}}
 
+// {{{ orbit coloring helpers
+
+#[inline]
+fn orbit_escape_color(
+    color_type: ColorType,
+    escape: OrbitEscape,
+    maxit: usize,
+    escape_radius: f64,
+) -> Rgb<u8> {
+    match escape.iteration {
+        None => Rgb([0, 0, 0]),
+        Some(n) => get_smooth_orbit_color(color_type, n, escape.z_norm, maxit, escape_radius),
+    }
+}
+
+#[inline]
+fn write_rgb_pixel(pixels: &mut [u8], index: usize, color: Rgb<u8>) {
+    pixels[index] = color[0];
+    pixels[index + 1] = color[1];
+    pixels[index + 2] = color[2];
+}
+
+// }}}
+
 // {{{ render Julia orbits
 
 pub fn render_julia_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]) {
@@ -124,33 +156,42 @@ pub fn render_julia_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]
 
     let maxit = brot.maxit;
     let escape_radius = brot.escape_radius_squared.sqrt();
-    let mut local_brot = Netbrot {
-        mat: brot.mat.clone(),
-        z0: brot.z0.clone(),
-        c: brot.c,
-        maxit: brot.maxit,
-        escape_radius_squared: brot.escape_radius_squared,
-    };
+    let escape_r2 = brot.escape_radius_squared;
+    let c = brot.c;
+    let ndim = brot.z0.len();
+
+    if ndim == 2 {
+        let m = &brot.mat;
+        let a00 = m[(0, 0)];
+        let a01 = m[(0, 1)];
+        let a10 = m[(1, 0)];
+        let a11 = m[(1, 1)];
+
+        for row in 0..resolution.1 {
+            for column in 0..resolution.0 {
+                let point = renderer.pixel_to_point((column, row));
+                let escape =
+                    netbrot_orbit_escape_2d(a00, a01, a10, a11, point, point, c, maxit, escape_r2);
+                let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
+                let index = (row * resolution.0 + column) * 3;
+                write_rgb_pixel(pixels, index, color);
+            }
+        }
+        return;
+    }
+
+    let mut z = brot.z0.clone();
+    let mut matz = Vector::zeros(ndim);
 
     for row in 0..resolution.1 {
         for column in 0..resolution.0 {
-            local_brot.z0 =
-                Vector::from_element(brot.z0.len(), renderer.pixel_to_point((column, row)));
-            let color = match netbrot_orbit(&local_brot) {
-                EscapeResult {
-                    iteration: None,
-                    z: _,
-                } => Rgb([0, 0, 0]),
-                EscapeResult {
-                    iteration: Some(n),
-                    z,
-                } => get_smooth_orbit_color(color_type, n, z.norm(), maxit, escape_radius),
-            };
-
-            let index = row * resolution.0 + 3 * column;
-            pixels[index] = color[0];
-            pixels[index + 1] = color[1];
-            pixels[index + 2] = color[2];
+            let point = renderer.pixel_to_point((column, row));
+            z.fill(point);
+            let escape =
+                netbrot_orbit_escape_ndim(&brot.mat, &mut z, c, maxit, escape_r2, &mut matz);
+            let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
+            let index = (row * resolution.0 + column) * 3;
+            write_rgb_pixel(pixels, index, color);
         }
     }
 }
@@ -166,32 +207,43 @@ pub fn render_mandelbrot_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut
 
     let maxit = brot.maxit;
     let escape_radius = brot.escape_radius_squared.sqrt();
-    let mut local_brot = Netbrot {
-        mat: brot.mat.clone(),
-        z0: brot.z0.clone(),
-        c: brot.c,
-        maxit: brot.maxit,
-        escape_radius_squared: brot.escape_radius_squared,
-    };
+    let escape_r2 = brot.escape_radius_squared;
+    let ndim = brot.z0.len();
+
+    if ndim == 2 {
+        let m = &brot.mat;
+        let a00 = m[(0, 0)];
+        let a01 = m[(0, 1)];
+        let a10 = m[(1, 0)];
+        let a11 = m[(1, 1)];
+        let z0 = brot.z0[0];
+        let z1 = brot.z0[1];
+
+        for row in 0..resolution.1 {
+            for column in 0..resolution.0 {
+                let c = renderer.pixel_to_point((column, row));
+                let escape =
+                    netbrot_orbit_escape_2d(a00, a01, a10, a11, z0, z1, c, maxit, escape_r2);
+                let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
+                let index = (row * resolution.0 + column) * 3;
+                write_rgb_pixel(pixels, index, color);
+            }
+        }
+        return;
+    }
+
+    let mut z = brot.z0.clone();
+    let mut matz = Vector::zeros(ndim);
 
     for row in 0..resolution.1 {
         for column in 0..resolution.0 {
-            local_brot.c = renderer.pixel_to_point((column, row));
-            let color = match netbrot_orbit(&local_brot) {
-                EscapeResult {
-                    iteration: None,
-                    z: _,
-                } => Rgb([0, 0, 0]),
-                EscapeResult {
-                    iteration: Some(n),
-                    z,
-                } => get_smooth_orbit_color(color_type, n, z.norm(), maxit, escape_radius),
-            };
-
-            let index = row * resolution.0 + 3 * column;
-            pixels[index] = color[0];
-            pixels[index + 1] = color[1];
-            pixels[index + 2] = color[2];
+            z.copy_from(&brot.z0);
+            let c = renderer.pixel_to_point((column, row));
+            let escape =
+                netbrot_orbit_escape_ndim(&brot.mat, &mut z, c, maxit, escape_r2, &mut matz);
+            let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
+            let index = (row * resolution.0 + column) * 3;
+            write_rgb_pixel(pixels, index, color);
         }
     }
 }
@@ -215,10 +267,8 @@ pub fn render_period(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]) {
                 Some(period) => get_period_color(color_type, period % MAX_PERIODS),
             };
 
-            let index = row * resolution.0 + 3 * column;
-            pixels[index] = color[0];
-            pixels[index + 1] = color[1];
-            pixels[index + 2] = color[2];
+            let index = (row * resolution.0 + column) * 3;
+            write_rgb_pixel(pixels, index, color);
         }
     }
 }
@@ -261,10 +311,8 @@ pub fn render_attractive_fixed_points(
                 };
             }
 
-            let index = row * resolution.0 + 3 * column;
-            pixels[index] = color[0];
-            pixels[index + 1] = color[1];
-            pixels[index + 2] = color[2];
+            let index = (row * resolution.0 + column) * 3;
+            write_rgb_pixel(pixels, index, color);
         }
     }
 
