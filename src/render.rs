@@ -139,7 +139,7 @@ fn orbit_escape_color(
 }
 
 #[inline]
-fn write_rgb_pixel(pixels: &mut [u8], index: usize, color: Rgb<u8>) {
+fn set_rgb_pixel(pixels: &mut [u8], index: usize, color: Rgb<u8>) {
     pixels[index] = color[0];
     pixels[index + 1] = color[1];
     pixels[index + 2] = color[2];
@@ -169,7 +169,7 @@ pub fn render_julia_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]
                 let escape = netbrot_orbit_escape_1d(a, point, c, maxit, escape_r2);
                 let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
                 let index = (row * resolution.0 + column) * 3;
-                write_rgb_pixel(pixels, index, color);
+                set_rgb_pixel(pixels, index, color);
             }
         }
         return;
@@ -189,7 +189,7 @@ pub fn render_julia_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]
                     netbrot_orbit_escape_2d(a00, a01, a10, a11, point, point, c, maxit, escape_r2);
                 let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
                 let index = (row * resolution.0 + column) * 3;
-                write_rgb_pixel(pixels, index, color);
+                set_rgb_pixel(pixels, index, color);
             }
         }
         return;
@@ -206,7 +206,7 @@ pub fn render_julia_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]
                 netbrot_orbit_escape_ndim(&brot.mat, &mut z, c, maxit, escape_r2, &mut matz);
             let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
             let index = (row * resolution.0 + column) * 3;
-            write_rgb_pixel(pixels, index, color);
+            set_rgb_pixel(pixels, index, color);
         }
     }
 }
@@ -235,7 +235,7 @@ pub fn render_mandelbrot_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut
                 let escape = netbrot_orbit_escape_1d(a, z0, c, maxit, escape_r2);
                 let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
                 let index = (row * resolution.0 + column) * 3;
-                write_rgb_pixel(pixels, index, color);
+                set_rgb_pixel(pixels, index, color);
             }
         }
         return;
@@ -257,7 +257,7 @@ pub fn render_mandelbrot_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut
                     netbrot_orbit_escape_2d(a00, a01, a10, a11, z0, z1, c, maxit, escape_r2);
                 let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
                 let index = (row * resolution.0 + column) * 3;
-                write_rgb_pixel(pixels, index, color);
+                set_rgb_pixel(pixels, index, color);
             }
         }
         return;
@@ -274,7 +274,7 @@ pub fn render_mandelbrot_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut
                 netbrot_orbit_escape_ndim(&brot.mat, &mut z, c, maxit, escape_r2, &mut matz);
             let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
             let index = (row * resolution.0 + column) * 3;
-            write_rgb_pixel(pixels, index, color);
+            set_rgb_pixel(pixels, index, color);
         }
     }
 }
@@ -299,7 +299,7 @@ pub fn render_period(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]) {
             };
 
             let index = (row * resolution.0 + column) * 3;
-            write_rgb_pixel(pixels, index, color);
+            set_rgb_pixel(pixels, index, color);
         }
     }
 }
@@ -343,7 +343,7 @@ pub fn render_attractive_fixed_points(
             }
 
             let index = (row * resolution.0 + column) * 3;
-            write_rgb_pixel(pixels, index, color);
+            set_rgb_pixel(pixels, index, color);
         }
     }
 
