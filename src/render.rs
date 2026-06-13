@@ -59,7 +59,7 @@ impl Renderer {
         if ratio.is_nan() || ratio.is_infinite() {
             ratio = 1.0;
         }
-        // Clamp ratio to prevent generating ridiculously large textures that crash egui
+        // Clamp ratio to prevent generating ridiculously large values
         let ratio = ratio.abs().clamp(0.01, 10.0);
         let r = resolution as f64;
 
