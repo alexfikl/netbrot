@@ -67,7 +67,7 @@ impl Netbrot {
 }
 
 #[derive(Clone, Debug)]
-pub struct EscapeResult {
+pub struct PeriodEscapeResult {
     /// Iteration at which the point escaped or None otherwise.
     pub iteration: Option<usize>,
     /// Last point of the iterate (will be very large if the point escaped).
@@ -76,7 +76,7 @@ pub struct EscapeResult {
 
 /// Escape-time result optimized for rendering (avoids retaining the full state vector).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct OrbitEscape {
+pub struct EscapeResult {
     /// Iteration at which the point escaped, or `None` if it stayed bounded.
     pub iteration: Option<usize>,
     /// Euclidean norm of *z* when escaped (only meaningful if `iteration` is `Some`).
@@ -90,11 +90,6 @@ type PeriodResult = Option<usize>;
 
 // {{{ escape
 
-#[inline]
-fn complex_norm_squared(z: Complex64) -> f64 {
-    z.re * z.re + z.im * z.im
-}
-
 /// Specialized 1D orbit (scalar complex state).
 #[inline]
 pub fn netbrot_orbit_escape_1d(
@@ -103,14 +98,14 @@ pub fn netbrot_orbit_escape_1d(
     c: Complex64,
     maxit: usize,
     escape_radius_squared: f64,
-) -> OrbitEscape {
+) -> EscapeResult {
     let mut z = z;
     let mut w = a * z;
 
     for i in 0..maxit {
-        let norm_sq = complex_norm_squared(z);
+        let norm_sq = z.norm_sqr();
         if norm_sq > escape_radius_squared {
-            return OrbitEscape {
+            return EscapeResult {
                 iteration: Some(i),
                 z_norm: norm_sq.sqrt(),
             };
@@ -120,7 +115,7 @@ pub fn netbrot_orbit_escape_1d(
         w = a * z;
     }
 
-    OrbitEscape {
+    EscapeResult {
         iteration: None,
         z_norm: 0.0,
     }
@@ -139,16 +134,16 @@ pub fn netbrot_orbit_escape_2d(
     c: Complex64,
     maxit: usize,
     escape_radius_squared: f64,
-) -> OrbitEscape {
+) -> EscapeResult {
     let mut z0 = z0;
     let mut z1 = z1;
     let mut w0 = a00 * z0 + a01 * z1;
     let mut w1 = a10 * z0 + a11 * z1;
 
     for i in 0..maxit {
-        let norm_sq = complex_norm_squared(z0) + complex_norm_squared(z1);
+        let norm_sq = z0.norm_sqr() + z1.norm_sqr();
         if norm_sq > escape_radius_squared {
-            return OrbitEscape {
+            return EscapeResult {
                 iteration: Some(i),
                 z_norm: norm_sq.sqrt(),
             };
@@ -160,7 +155,7 @@ pub fn netbrot_orbit_escape_2d(
         w1 = a10 * z0 + a11 * z1;
     }
 
-    OrbitEscape {
+    EscapeResult {
         iteration: None,
         z_norm: 0.0,
     }
@@ -174,13 +169,13 @@ pub fn netbrot_orbit_escape_ndim(
     maxit: usize,
     escape_radius_squared: f64,
     matz: &mut Vector,
-) -> OrbitEscape {
+) -> EscapeResult {
     mat.mul_to(z, matz);
 
     for i in 0..maxit {
         let norm_sq: f64 = z.iter().map(|zi| zi.norm_sqr()).sum();
         if norm_sq > escape_radius_squared {
-            return OrbitEscape {
+            return EscapeResult {
                 iteration: Some(i),
                 z_norm: norm_sq.sqrt(),
             };
@@ -192,46 +187,9 @@ pub fn netbrot_orbit_escape_ndim(
         mat.mul_to(z, matz);
     }
 
-    OrbitEscape {
+    EscapeResult {
         iteration: None,
         z_norm: 0.0,
-    }
-}
-
-/// Compute escape time for rendering. Dispatches to specialized kernels when possible.
-pub fn netbrot_orbit_escape(brot: &Netbrot) -> OrbitEscape {
-    let n = brot.z0.len();
-    match n {
-        1 => netbrot_orbit_escape_1d(
-            brot.mat[(0, 0)],
-            brot.z0[0],
-            brot.c,
-            brot.maxit,
-            brot.escape_radius_squared,
-        ),
-        2 => netbrot_orbit_escape_2d(
-            brot.mat[(0, 0)],
-            brot.mat[(0, 1)],
-            brot.mat[(1, 0)],
-            brot.mat[(1, 1)],
-            brot.z0[0],
-            brot.z0[1],
-            brot.c,
-            brot.maxit,
-            brot.escape_radius_squared,
-        ),
-        _ => {
-            let mut z = brot.z0.clone();
-            let mut matz = Vector::zeros(n);
-            netbrot_orbit_escape_ndim(
-                &brot.mat,
-                &mut z,
-                brot.c,
-                brot.maxit,
-                brot.escape_radius_squared,
-                &mut matz,
-            )
-        }
     }
 }
 
@@ -243,7 +201,7 @@ pub fn netbrot_orbit_escape(brot: &Netbrot) -> OrbitEscape {
 ///
 /// where $A$ is a $d \times d$ matrix, $z$ is a $d$ dimensional vector and
 /// $c$ is a complex constant.
-pub fn netbrot_orbit(brot: &Netbrot) -> EscapeResult {
+pub fn netbrot_orbit(brot: &Netbrot) -> PeriodEscapeResult {
     let mut z = brot.z0.clone();
     let mut matz = Vector::zeros(z.len());
     let escape = netbrot_orbit_escape_ndim(
@@ -255,7 +213,7 @@ pub fn netbrot_orbit(brot: &Netbrot) -> EscapeResult {
         &mut matz,
     );
 
-    EscapeResult {
+    PeriodEscapeResult {
         iteration: escape.iteration,
         z,
     }
@@ -271,7 +229,7 @@ pub fn netbrot_orbit(brot: &Netbrot) -> EscapeResult {
 /// escape and checking the tolerance.
 pub fn netbrot_orbit_period(brot: &Netbrot) -> PeriodResult {
     match netbrot_orbit(brot) {
-        EscapeResult { iteration: None, z } => {
+        PeriodEscapeResult { iteration: None, z } => {
             // When the limit was reached but the point did not escape, we look
             // for a period in a very naive way.
             let mat = &brot.mat;
@@ -305,7 +263,7 @@ pub fn netbrot_orbit_period(brot: &Netbrot) -> PeriodResult {
 
             Some(MAX_PERIODS - 1)
         }
-        EscapeResult {
+        PeriodEscapeResult {
             iteration: Some(_),
             z: _,
         } => None,
@@ -402,6 +360,49 @@ mod tests {
             println!("Order: {}", order.min());
             assert!(order.min() > 0.9);
         }
+    }
+    #[test]
+    fn test_escape_kernels_match() {
+        let maxit = 100;
+        let escape_radius = 5.0;
+        let escape_r2 = escape_radius * escape_radius;
+
+        // --- Test 1D ---
+        let mat1d = dmatrix![c64(0.5, 0.5)];
+        let c1d = c64(-0.5, 0.0);
+        let z0_1d = c64(0.1, -0.1);
+        let mut vec_z_1d = DVector::from_element(1, z0_1d);
+        let mut matz_1d = Vector::zeros(1);
+
+        let esc_1d = netbrot_orbit_escape_1d(mat1d[(0, 0)], z0_1d, c1d, maxit, escape_r2);
+        let esc_nd_1d =
+            netbrot_orbit_escape_ndim(&mat1d, &mut vec_z_1d, c1d, maxit, escape_r2, &mut matz_1d);
+        assert_eq!(esc_1d.iteration, esc_nd_1d.iteration);
+        assert!((esc_1d.z_norm - esc_nd_1d.z_norm).abs() < 1e-12);
+
+        // --- Test 2D ---
+        let mat2d = dmatrix![c64(0.5, 0.0), c64(-0.2, 0.1); c64(0.1, -0.1), c64(0.8, 0.0)];
+        let c2d = c64(-0.4, 0.2);
+        let z0_2d = [c64(0.2, 0.2), c64(-0.1, 0.0)];
+        let mut vec_z_2d = DVector::from_vec(z0_2d.to_vec());
+        let mut matz_2d = Vector::zeros(2);
+
+        let esc_2d = netbrot_orbit_escape_2d(
+            mat2d[(0, 0)],
+            mat2d[(0, 1)],
+            mat2d[(1, 0)],
+            mat2d[(1, 1)],
+            z0_2d[0],
+            z0_2d[1],
+            c2d,
+            maxit,
+            escape_r2,
+        );
+        let esc_nd_2d =
+            netbrot_orbit_escape_ndim(&mat2d, &mut vec_z_2d, c2d, maxit, escape_r2, &mut matz_2d);
+
+        assert_eq!(esc_2d.iteration, esc_nd_2d.iteration);
+        assert!((esc_2d.z_norm - esc_nd_2d.z_norm).abs() < 1e-12);
     }
 }
 
