@@ -375,10 +375,10 @@ mod tests {
         let mut matz_1d = Vector::zeros(1);
 
         let esc_1d = netbrot_orbit_escape_1d(mat1d[(0, 0)], z0_1d, c1d, maxit, escape_r2);
-        let esc_nd_1d =
+        let esc_ndim_1d =
             netbrot_orbit_escape_ndim(&mat1d, &mut vec_z_1d, c1d, maxit, escape_r2, &mut matz_1d);
-        assert_eq!(esc_1d.iteration, esc_nd_1d.iteration);
-        assert!((esc_1d.z_norm - esc_nd_1d.z_norm).abs() < 1e-12);
+        assert_eq!(esc_1d.iteration, esc_ndim_1d.iteration);
+        assert!((esc_1d.z_norm - esc_ndim_1d.z_norm).abs() < 1e-12);
 
         // --- Test 2D ---
         let mat2d = dmatrix![c64(0.5, 0.0), c64(-0.2, 0.1); c64(0.1, -0.1), c64(0.8, 0.0)];
@@ -398,11 +398,11 @@ mod tests {
             maxit,
             escape_r2,
         );
-        let esc_nd_2d =
+        let esc_ndim_2d =
             netbrot_orbit_escape_ndim(&mat2d, &mut vec_z_2d, c2d, maxit, escape_r2, &mut matz_2d);
 
-        assert_eq!(esc_2d.iteration, esc_nd_2d.iteration);
-        assert!((esc_2d.z_norm - esc_nd_2d.z_norm).abs() < 1e-12);
+        assert_eq!(esc_2d.iteration, esc_ndim_2d.iteration);
+        assert!((esc_2d.z_norm - esc_ndim_2d.z_norm).abs() < 1e-12);
     }
 }
 
