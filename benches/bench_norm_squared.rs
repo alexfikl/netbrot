@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Alexandru Fikl <alexfikl@gmail.com>
 // SPDX-License-Identifier: MIT
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use nalgebra::DVector;
 use num::complex::{Complex64, c64};
 
