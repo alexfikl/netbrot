@@ -173,7 +173,7 @@ pub fn netbrot_orbit_escape_ndim(
     mat.mul_to(z, matz);
 
     for i in 0..maxit {
-        let norm_sq: f64 = z.iter().map(|zi| zi.norm_sqr()).sum();
+        let norm_sq: f64 = z.norm_squared();
         if norm_sq > escape_radius_squared {
             return EscapeResult {
                 iteration: Some(i),
