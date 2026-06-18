@@ -5,6 +5,15 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use nalgebra::DVector;
 use num::complex::{Complex64, c64};
 
+// NOTE: this benchmark is supposed to compare different ways to do
+//      z[i] = matz[i] * matz[i] + c
+// in netbrot_orbit_escape_ndim for an N=200 sized vector. The zip_apply version
+// seems to be the fastest here. However, in the real code, the `mat.mul_to`
+// is an O(n^2) operation that completely dominates everything else.
+//
+// In fact, using zip_apply seemed to be 1-2s slower on a bigger render run, but
+// that might just have been measurement noise. Overall these are all "the same".
+
 /// Original: `z[i] = matz[i] * matz[i] + c` via manual loop
 #[inline(never)]
 fn square_add_loop(
