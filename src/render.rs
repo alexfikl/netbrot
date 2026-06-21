@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText: 2024 Alexandru Fikl <alexfikl@gmail.com>
+// SPDX-FileCopyrightText: 2026 ml3m
 // SPDX-License-Identifier: MIT
 
 use clap::ValueEnum;
