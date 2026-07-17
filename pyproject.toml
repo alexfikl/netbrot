@@ -24,22 +24,22 @@ lint.select = [
     "W",   # flake8
 ]
 lint.ignore = [
-    "A005",    # shadowing-builtin-module
-    "E402",    # module-import-not-at-top-of-file
-    "ISC001",  # single-line-implicit-string-concatenation
-    "N803",    # non-lowercase-argument
-    "N806",    # non-lowercase-variable-in-function
-    "PLC0415", # import-outside-top-level
-    "PLR0911", # too-many-return-statements
-    "PLR0912", # too-many-branches
-    "PLR0913", # too-many-arguments
-    "PLR0914", # too-many-variables
-    "PLR0915", # too-many-statements
-    "PLR2004", # magic-value-comparison
-    "PLW0717", # try-clause-has-too-many-statements
-    "S101",    # assert
-    "S102",    # exec-builtin
-    "UP037",   # quoted-annotation
+    "stdlib-module-shadowing",    # shadowing-builtin-module
+    "module-import-not-at-top-of-file",    # module-import-not-at-top-of-file
+    "single-line-implicit-string-concatenation",  # single-line-implicit-string-concatenation
+    "invalid-argument-name",    # non-lowercase-argument
+    "non-lowercase-variable-in-function",    # non-lowercase-variable-in-function
+    "import-outside-top-level", # import-outside-top-level
+    "too-many-return-statements", # too-many-return-statements
+    "too-many-branches", # too-many-branches
+    "too-many-arguments", # too-many-arguments
+    "too-many-locals", # too-many-variables
+    "too-many-statements", # too-many-statements
+    "magic-value-comparison", # magic-value-comparison
+    "too-many-statements-in-try-clause", # try-clause-has-too-many-statements
+    "assert",    # assert
+    "exec-builtin",    # exec-builtin
+    "quoted-annotation",   # quoted-annotation
 ]
 lint.flake8-quotes.docstring-quotes = "double"
 lint.flake8-quotes.inline-quotes = "double"
