@@ -91,7 +91,7 @@ def main(
     overwrite: bool = False,
 ) -> int:
     try:
-        import cv2  # ty: ignore[unresolved-import] # noqa: F401
+        import cv2  # ty: ignore[unresolved-import] # ruff:ignore[unused-import]
     except ImportError:
         log.error("'cv2' package not found.")
         return 1

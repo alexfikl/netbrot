@@ -48,7 +48,7 @@ def set_recommended_matplotlib() -> None:
     import matplotlib.pyplot as mp
 
     with suppress(ImportError):
-        import scienceplots  # noqa: F401
+        import scienceplots  # ruff:ignore[unused-import]
 
         mp.style.use(["science", "ieee"])
 
@@ -346,7 +346,7 @@ def save_geometry(
 
     for i, mode in enumerate(modes):
         if nmodes is not None:
-            mode = resample(mode, nmodes)  # noqa: PLW2901
+            mode = resample(mode, nmodes)  # ruff:ignore[redefined-loop-name]
         log.info("Computing geometry for exhibit %d with %d modes", i, mode.size)
 
         curve = curve_geometry(mode)
@@ -413,13 +413,13 @@ def main(
     debug: bool = False,
 ) -> int:
     try:
-        import cv2  # ty: ignore[unresolved-import] # noqa: F401
+        import cv2  # ty: ignore[unresolved-import] # ruff:ignore[unused-import]
     except ImportError:
         log.error("'cv2' package not found.")
         return 1
 
     try:
-        import matplotlib.pyplot as mp  # noqa: F401
+        import matplotlib.pyplot as mp  # ruff:ignore[unused-import]
     except ImportError:
         log.error("'matplotlib' package not found.")
         return 1

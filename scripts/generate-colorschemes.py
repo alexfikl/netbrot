@@ -31,7 +31,7 @@ def set_recommended_matplotlib() -> None:
     import matplotlib.pyplot as mp
 
     with suppress(ImportError):
-        import scienceplots  # noqa: F401
+        import scienceplots  # ruff:ignore[unused-import]
 
         mp.style.use(["science", "ieee"])
 
