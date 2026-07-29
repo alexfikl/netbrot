@@ -86,6 +86,10 @@ debug:
 release:
     cargo build --locked --all-features --release
 
+[doc("Install the executables to the given path")]
+install directory:
+    cargo install --lcoked --all-features --root directory --path .
+
 # }}}
 # {{{
 
