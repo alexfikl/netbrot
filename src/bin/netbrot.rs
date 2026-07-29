@@ -75,6 +75,10 @@ struct Cli {
     #[arg(long, num_args = 4, allow_hyphen_values = true)]
     bbox: Option<Vec<f64>>,
 
+    /// Number of threads to use for parallel rendering (0 = use all available cores)
+    #[arg(short = 'j', long, default_value_t = 0)]
+    jobs: usize,
+
     /// Period used when looking for attractive fixed points.
     #[arg(long, default_value_t = 1)]
     period: u32,
@@ -137,6 +141,14 @@ fn display(renderer: &Renderer, brot: &Netbrot) {
 
 fn main() {
     let args = Cli::parse();
+
+    if args.jobs > 0 {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(args.jobs)
+            .build_global()
+            .unwrap();
+    }
+
     let exhibit = read_exhibit(args.exhibit.clone()).unwrap();
 
     let (upper_left, lower_right) = match args.bbox {
