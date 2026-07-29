@@ -120,6 +120,7 @@ clean:
 [doc("Remove all generated files and caches")]
 purge: clean
     rm -rf target
+    rm -rf directory
     rm -rf .ruff_cache
 
 [doc("Generate README image")]

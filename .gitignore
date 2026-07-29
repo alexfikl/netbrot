@@ -6,6 +6,7 @@ data/*.mat
 data/*.json
 
 /target
+/directory
 *.mp4
 *.png
 *.mat
