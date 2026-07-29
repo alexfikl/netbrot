@@ -88,7 +88,7 @@ release:
 
 [doc("Install the executables to the given path")]
 install directory:
-    cargo install --locked --all-features --root directory --path .
+    cargo install --locked --all-features --root {{ directory }} --path .
 
 # }}}
 # {{{
