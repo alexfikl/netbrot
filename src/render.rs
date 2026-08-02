@@ -127,15 +127,10 @@ impl Renderer {
 // {{{ orbit coloring helpers
 
 #[inline]
-fn orbit_escape_color(
-    color_type: ColorType,
-    escape: EscapeResult,
-    maxit: usize,
-    escape_radius: f64,
-) -> Rgb<u8> {
+fn orbit_escape_color(color_type: ColorType, escape: EscapeResult, maxit: usize) -> Rgb<u8> {
     match escape.iteration {
         None => Rgb([0, 0, 0]),
-        Some(n) => get_smooth_orbit_color(color_type, n, escape.z_norm, maxit, escape_radius),
+        Some(n) => get_smooth_orbit_color(color_type, n, escape.z_norm, maxit),
     }
 }
 
@@ -156,7 +151,6 @@ pub fn render_julia_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]
     assert!(pixels.len() == 3 * resolution.0 * resolution.1);
 
     let maxit = brot.maxit;
-    let escape_radius = brot.escape_radius_squared.sqrt();
     let escape_r2 = brot.escape_radius_squared;
     let c = brot.c;
     let ndim = brot.z0.len();
@@ -168,7 +162,7 @@ pub fn render_julia_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]
             for column in 0..resolution.0 {
                 let point = renderer.pixel_to_point((column, row));
                 let escape = netbrot_orbit_escape_1d(a, point, c, maxit, escape_r2);
-                let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
+                let color = orbit_escape_color(color_type, escape, maxit);
                 let index = (row * resolution.0 + column) * 3;
                 set_rgb_pixel(pixels, index, color);
             }
@@ -188,7 +182,7 @@ pub fn render_julia_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]
                 let point = renderer.pixel_to_point((column, row));
                 let escape =
                     netbrot_orbit_escape_2d(a00, a01, a10, a11, point, point, c, maxit, escape_r2);
-                let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
+                let color = orbit_escape_color(color_type, escape, maxit);
                 let index = (row * resolution.0 + column) * 3;
                 set_rgb_pixel(pixels, index, color);
             }
@@ -205,7 +199,7 @@ pub fn render_julia_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut [u8]
             z.fill(point);
             let escape =
                 netbrot_orbit_escape_ndim(&brot.mat, &mut z, c, maxit, escape_r2, &mut matz);
-            let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
+            let color = orbit_escape_color(color_type, escape, maxit);
             let index = (row * resolution.0 + column) * 3;
             set_rgb_pixel(pixels, index, color);
         }
@@ -222,7 +216,6 @@ pub fn render_mandelbrot_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut
     assert!(pixels.len() == 3 * resolution.0 * resolution.1);
 
     let maxit = brot.maxit;
-    let escape_radius = brot.escape_radius_squared.sqrt();
     let escape_r2 = brot.escape_radius_squared;
     let ndim = brot.z0.len();
 
@@ -234,7 +227,7 @@ pub fn render_mandelbrot_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut
             for column in 0..resolution.0 {
                 let c = renderer.pixel_to_point((column, row));
                 let escape = netbrot_orbit_escape_1d(a, z0, c, maxit, escape_r2);
-                let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
+                let color = orbit_escape_color(color_type, escape, maxit);
                 let index = (row * resolution.0 + column) * 3;
                 set_rgb_pixel(pixels, index, color);
             }
@@ -256,7 +249,7 @@ pub fn render_mandelbrot_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut
                 let c = renderer.pixel_to_point((column, row));
                 let escape =
                     netbrot_orbit_escape_2d(a00, a01, a10, a11, z0, z1, c, maxit, escape_r2);
-                let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
+                let color = orbit_escape_color(color_type, escape, maxit);
                 let index = (row * resolution.0 + column) * 3;
                 set_rgb_pixel(pixels, index, color);
             }
@@ -273,7 +266,7 @@ pub fn render_mandelbrot_orbit(renderer: &Renderer, brot: &Netbrot, pixels: &mut
             let c = renderer.pixel_to_point((column, row));
             let escape =
                 netbrot_orbit_escape_ndim(&brot.mat, &mut z, c, maxit, escape_r2, &mut matz);
-            let color = orbit_escape_color(color_type, escape, maxit, escape_radius);
+            let color = orbit_escape_color(color_type, escape, maxit);
             let index = (row * resolution.0 + column) * 3;
             set_rgb_pixel(pixels, index, color);
         }

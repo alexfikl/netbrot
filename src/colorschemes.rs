@@ -145,14 +145,14 @@ pub enum ColorType {
 
 /// Determine the color for a normalized iteration count *c*.
 ///
-/// This function takes a value *c* in [0, 1].
-fn orbit_color_hsl(c: f64) -> Rgb<u8> {
-    let n = c.clamp(0.0, 1.0);
+/// This function takes a value *x* in [0, 1].
+fn orbit_color_hsl(x: f64) -> Rgb<u8> {
+    let x = x.clamp(0.0, 1.0);
 
     // NOTE: in HSL, we have that H in [0, 360], S in [0, 100] and L in [0, 100]
-    let hue = (n * 360.0).round() as f32;
+    let hue = (x * 360.0).round() as f32;
     let saturation = 100.0;
-    let lightness = if n < 1.0 { 50.0 } else { 0.0 };
+    let lightness = if x < 1.0 { 50.0 } else { 0.0 };
 
     let (r, g, b) = Hsl::from(hue, saturation, lightness).to_rgb().as_tuple();
     Rgb([b as u8, g as u8, r as u8])
@@ -160,23 +160,24 @@ fn orbit_color_hsl(c: f64) -> Rgb<u8> {
 
 // Determine grayscale color for normalized iteration count *c*.
 //
-// This function takes a value *c* in [0, 1].
-fn orbit_color_gray(c: f64) -> Rgb<u8> {
-    let n = 1.0 - c.clamp(0.0, 1.0).powf(0.4_f64);
-    let g = (n * 255.0).round() as u8;
+// This function takes a value *x* in [0, 1].
+fn orbit_color_gray(x: f64) -> Rgb<u8> {
+    // NOTE: this function is random, just picked one that looked nice on an example
+    let x = 1.0 - x.clamp(0.0, 1.0).powf(0.4_f64);
+    let g = (x * 255.0).round() as u8;
 
     Rgb([g, g, g])
 }
 
-fn interp(c: f64, from: &Rgb<u8>, to: &Rgb<u8>) -> Rgb<u8> {
-    let n = c.clamp(0.0, 1.0);
+fn interp(x: f64, from: &Rgb<u8>, to: &Rgb<u8>) -> Rgb<u8> {
+    let x = x.clamp(0.0, 1.0);
     let cfrom = from.0;
     let cto = to.0;
 
     Rgb([
-        ((1.0 - n) * (cfrom[0] as f64) + n * (cto[0] as f64)) as u8,
-        ((1.0 - n) * (cfrom[1] as f64) + n * (cto[1] as f64)) as u8,
-        ((1.0 - n) * (cfrom[2] as f64) + n * (cto[2] as f64)) as u8,
+        ((1.0 - x) * (cfrom[0] as f64) + x * (cto[0] as f64)) as u8,
+        ((1.0 - x) * (cfrom[1] as f64) + x * (cto[1] as f64)) as u8,
+        ((1.0 - x) * (cfrom[2] as f64) + x * (cto[2] as f64)) as u8,
     ])
 }
 
@@ -184,20 +185,14 @@ fn interp(c: f64, from: &Rgb<u8>, to: &Rgb<u8>) -> Rgb<u8> {
 ///
 /// This function tries to be a bit smarter with the coloring and uses the
 /// renormalization mentioned in [here](https://linas.org/art-gallery/escape/escape.html).
-pub fn get_smooth_orbit_color(
-    ctype: ColorType,
-    c: usize,
-    z: f64,
-    limit: usize,
-    radius: f64,
-) -> Rgb<u8> {
-    let cz = ((c as f64) + 1.0 - z.ln().ln() / radius.ln()) / (limit as f64);
+pub fn get_smooth_orbit_color(ctype: ColorType, n: usize, znorm: f64, maxit: usize) -> Rgb<u8> {
+    let x = ((n as f64) + 1.0 - znorm.ln().ln() / 2.0_f64.ln()) / (maxit as f64);
 
     match ctype {
         ColorType::OrbitBinary => Rgb([255, 255, 255]),
-        ColorType::OrbitGray => orbit_color_gray(cz),
-        ColorType::OrbitFire => orbit_color_hsl(3.0 * cz * cz - 3.0 * cz + 1.0),
-        ColorType::DefaultPalette | ColorType::OrbitBlue => orbit_color_hsl(cz),
+        ColorType::OrbitGray => orbit_color_gray(x),
+        ColorType::OrbitFire => orbit_color_hsl(3.0 * x * x - 3.0 * x + 1.0),
+        ColorType::DefaultPalette | ColorType::OrbitBlue => orbit_color_hsl(x),
         _ => panic!("Unsupported color type: {:?}", ctype),
     }
 }
