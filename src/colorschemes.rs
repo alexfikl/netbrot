@@ -139,13 +139,13 @@ pub enum ColorType {
     EigenGreen,
     /// Color palette for fixed point rendering (yellow hues).
     EigenFire,
-    /// Grayscale palette for fixed point randering.
+    /// Grayscale palette for fixed point rendering.
     EigenGray,
 }
 
-/// Determine the color for a normalized iteration count *c*.
+/// Determine the color for a normalized iteration count *x*.
 ///
-/// This function takes a value *x* in [0, 1].
+/// This function takes a value in [0, 1].
 fn orbit_color_hsl(x: f64) -> Rgb<u8> {
     let x = x.clamp(0.0, 1.0);
 
@@ -158,9 +158,9 @@ fn orbit_color_hsl(x: f64) -> Rgb<u8> {
     Rgb([b as u8, g as u8, r as u8])
 }
 
-// Determine grayscale color for normalized iteration count *c*.
-//
-// This function takes a value *x* in [0, 1].
+/// Determine grayscale color for a normalized iteration count *x*.
+///
+/// This function takes a value in [0, 1].
 fn orbit_color_gray(x: f64) -> Rgb<u8> {
     // NOTE: this function is random, just picked one that looked nice on an example
     let x = 1.0 - x.clamp(0.0, 1.0).powf(0.4_f64);
@@ -181,10 +181,11 @@ fn interp(x: f64, from: &Rgb<u8>, to: &Rgb<u8>) -> Rgb<u8> {
     ])
 }
 
-/// Determine the color for a non-normalized iteration count *c* at *z*.
+/// Determine the color for an escaped orbit using smooth iteration coloring.
 ///
-/// This function tries to be a bit smarter with the coloring and uses the
-/// renormalization mentioned in [here](https://linas.org/art-gallery/escape/escape.html).
+/// Uses the renormalized fractional iteration count from
+/// [Linas Vepstas](https://linas.org/art-gallery/escape/escape.html):
+/// `mu = n + 1 - log(log |z_n|) / log(2)`, normalized by `maxit`.
 pub fn get_smooth_orbit_color(ctype: ColorType, n: usize, znorm: f64, maxit: usize) -> Rgb<u8> {
     let x = ((n as f64) + 1.0 - znorm.ln().ln() / 2.0_f64.ln()) / (maxit as f64);
 
@@ -199,8 +200,7 @@ pub fn get_smooth_orbit_color(ctype: ColorType, n: usize, znorm: f64, maxit: usi
 
 /// Determine the color for a given period.
 ///
-/// The period color is determined from a fixed colormap. Currently there are
-/// three colormaps implemented with *version* taking values in [1, 2, 3].
+/// The colormap used is determined by `ctype`.
 pub fn get_period_color(ctype: ColorType, p: usize) -> Rgb<u8> {
     // NOTE: this is just a random function we used for our rendering
     let (i, j) = (p / 8, p % 8);
@@ -229,11 +229,11 @@ pub fn get_fixed_point_color(ctype: ColorType, magnitude: f64, n: u32) -> Rgb<u8
 
     match ctype {
         ColorType::EigenGray => interp(c, &Rgb([0, 0, 0]), &Rgb([255, 255, 255])),
-        // NOTE: Colors taken from the 'magma' colormap in matplolib
+        // NOTE: Colors taken from the 'magma' colormap in matplotlib
         //      mpl.colormaps["magma"](0.0) and (1.0)
         // NOTE: this does not match the actual colormap!
         ColorType::EigenFire => interp(c, &Rgb([68, 1, 84]), &Rgb([253, 231, 36])),
-        // NOTE: Colors taken from the 'viridis' colormap in matplolib
+        // NOTE: Colors taken from the 'viridis' colormap in matplotlib
         ColorType::EigenGreen => interp(c, &Rgb([0, 0, 3]), &Rgb([251, 252, 191])),
         ColorType::PeriodStack => COLOR_PALETTE_V1[n % COLOR_PALETTE_V1.len()],
         ColorType::PeriodEndesga => COLOR_PALETTE_V2[n % COLOR_PALETTE_V2.len()],
