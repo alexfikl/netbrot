@@ -185,7 +185,7 @@ fn interp(c: f64, from: &Rgb<u8>, to: &Rgb<u8>) -> Rgb<u8> {
 /// This function tries to be a bit smarter with the coloring and uses the
 /// renormalization mentioned in [here](https://linas.org/art-gallery/escape/escape.html).
 pub fn get_smooth_orbit_color(
-    color: ColorType,
+    ctype: ColorType,
     c: usize,
     z: f64,
     limit: usize,
@@ -193,12 +193,12 @@ pub fn get_smooth_orbit_color(
 ) -> Rgb<u8> {
     let cz = ((c as f64) + 1.0 - z.ln().ln() / radius.ln()) / (limit as f64);
 
-    match color {
+    match ctype {
         ColorType::OrbitBinary => Rgb([255, 255, 255]),
         ColorType::OrbitGray => orbit_color_gray(cz),
         ColorType::OrbitFire => orbit_color_hsl(3.0 * cz * cz - 3.0 * cz + 1.0),
         ColorType::DefaultPalette | ColorType::OrbitBlue => orbit_color_hsl(cz),
-        _ => panic!("Unsupported color type: {:?}", color),
+        _ => panic!("Unsupported color type: {:?}", ctype),
     }
 }
 
@@ -206,24 +206,24 @@ pub fn get_smooth_orbit_color(
 ///
 /// The period color is determined from a fixed colormap. Currently there are
 /// three colormaps implemented with *version* taking values in [1, 2, 3].
-pub fn get_period_color(color: ColorType, p: usize) -> Rgb<u8> {
+pub fn get_period_color(ctype: ColorType, p: usize) -> Rgb<u8> {
     let (i, j) = (p / 8, p % 8);
     let p = (j - 1) * 8 + i;
 
-    match color {
+    match ctype {
         ColorType::PeriodStack => COLOR_PALETTE_V1[p % COLOR_PALETTE_V1.len()],
         ColorType::PeriodEndesga => COLOR_PALETTE_V2[p % COLOR_PALETTE_V1.len()],
         ColorType::DefaultPalette | ColorType::PeriodMatlab => {
             COLOR_PALETTE_V3[p % COLOR_PALETTE_V1.len()]
         }
-        _ => panic!("Unsupported color type: {:?}", color),
+        _ => panic!("Unsupported color type: {:?}", ctype),
     }
 }
 
 /// Determine the color for a given fixed point eigenvalue magnitude.
 ///
 /// The magnitude is expected to be in [0, 1]. Anything out of this range is clamped.
-pub fn get_fixed_point_color(color: ColorType, magnitude: f64, n: u32) -> Rgb<u8> {
+pub fn get_fixed_point_color(ctype: ColorType, magnitude: f64, n: u32) -> Rgb<u8> {
     let c = magnitude.clamp(0.0, 1.0);
     // NOTE: this makes it look like it has some visible contour lines.
     let c = (c * 16.0).round() / 16.0;
@@ -231,7 +231,7 @@ pub fn get_fixed_point_color(color: ColorType, magnitude: f64, n: u32) -> Rgb<u8
     let (i, j) = (n / 8, n % 8);
     let n = ((j - 1) * 8 + i) as usize;
 
-    match color {
+    match ctype {
         ColorType::EigenGray => interp(c, &Rgb([0, 0, 0]), &Rgb([255, 255, 255])),
         // NOTE: Colors taken from the 'magma' colormap in matplolib
         //      mpl.colormaps["magma"](0.0) and (1.0)
@@ -245,6 +245,6 @@ pub fn get_fixed_point_color(color: ColorType, magnitude: f64, n: u32) -> Rgb<u8
         ColorType::DefaultPalette | ColorType::EigenBlue => {
             interp(1.0 - c, &Rgb([0, 0, 241]), &Rgb([241, 0, 0]))
         }
-        _ => panic!("Unsupported color type: {:?}", color),
+        _ => panic!("Unsupported color type: {:?}", ctype),
     }
 }
