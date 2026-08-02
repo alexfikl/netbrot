@@ -202,8 +202,9 @@ pub fn get_smooth_orbit_color(ctype: ColorType, n: usize, znorm: f64, maxit: usi
 /// The period color is determined from a fixed colormap. Currently there are
 /// three colormaps implemented with *version* taking values in [1, 2, 3].
 pub fn get_period_color(ctype: ColorType, p: usize) -> Rgb<u8> {
+    // NOTE: this is just a random function we used for our rendering
     let (i, j) = (p / 8, p % 8);
-    let p = (j - 1) * 8 + i;
+    let p = (j + 7) * 8 + i;
 
     match ctype {
         ColorType::PeriodStack => COLOR_PALETTE_V1[p % COLOR_PALETTE_V1.len()],
@@ -219,12 +220,12 @@ pub fn get_period_color(ctype: ColorType, p: usize) -> Rgb<u8> {
 ///
 /// The magnitude is expected to be in [0, 1]. Anything out of this range is clamped.
 pub fn get_fixed_point_color(ctype: ColorType, magnitude: f64, n: u32) -> Rgb<u8> {
+    // FIXME: this makes it look like it has some visible contour lines.
     let c = magnitude.clamp(0.0, 1.0);
-    // NOTE: this makes it look like it has some visible contour lines.
     let c = (c * 16.0).round() / 16.0;
 
     let (i, j) = (n / 8, n % 8);
-    let n = ((j - 1) * 8 + i) as usize;
+    let n = ((j + 7) * 8 + i) as usize;
 
     match ctype {
         ColorType::EigenGray => interp(c, &Rgb([0, 0, 0]), &Rgb([255, 255, 255])),
