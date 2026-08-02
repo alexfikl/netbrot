@@ -208,7 +208,7 @@ pub fn get_period_color(ctype: ColorType, p: usize) -> Rgb<u8> {
 
     match ctype {
         ColorType::PeriodStack => COLOR_PALETTE_V1[p % COLOR_PALETTE_V1.len()],
-        ColorType::PeriodEndesga => COLOR_PALETTE_V2[p % COLOR_PALETTE_V1.len()],
+        ColorType::PeriodEndesga => COLOR_PALETTE_V2[p % COLOR_PALETTE_V2.len()],
         ColorType::DefaultPalette | ColorType::PeriodMatlab => {
             COLOR_PALETTE_V3[p % COLOR_PALETTE_V1.len()]
         }
