@@ -174,7 +174,12 @@ pub fn netbrot_orbit_escape_ndim(
     mat.mul_to(z, matz);
 
     for i in 0..maxit {
-        let norm_sq: f64 = z.norm_squared();
+        // NOTE: when A is a singular matrix, any component in ker(A) will vanish
+        // when doing (A z)^2 + c, so we can have a case where the component in
+        // there is huge, but has no effect on the escape of the system, and the
+        // component in the row space is tiny. This uses |A z| instead to sort
+        // of take that into account, since we have it computed anyway.
+        let norm_sq: f64 = matz.norm_squared();
         if norm_sq > escape_radius_squared {
             return EscapeResult {
                 iteration: Some(i),
