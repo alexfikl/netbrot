@@ -52,7 +52,12 @@ jobs:
     steps:
     - uses: actions/checkout@v7
     - uses: extractions/setup-just@v4
+    - name: CPU fingerprint
+      run: |
+        echo "CPU_KEY=$(grep -m1 flags /proc/cpuinfo | sha256sum | cut -d' ' -f1)" >> "$GITHUB_ENV"
     - uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ env.CPU_KEY }}
     - run: |
         just release
         ./target/release/netbrot -r 2048 data/readme.json
@@ -64,7 +69,12 @@ jobs:
     steps:
     - uses: actions/checkout@v7
     - uses: extractions/setup-just@v4
+    - name: CPU fingerprint
+      run: |
+        echo "CPU_KEY=$(grep -m1 flags /proc/cpuinfo | sha256sum | cut -d' ' -f1)" >> "$GITHUB_ENV"
     - uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ env.CPU_KEY }}
     - run: |
         just test
 
