@@ -32,7 +32,7 @@ cargo build --release
 
 A nightly build of a Windows executable can be found
 [on the Releases page](https://github.com/alexfikl/netbrot/releases/tag/nightly).
-Note that this build requires a modern-ish CPU to run (2013+ Haswell with AVX2).
+Note that this build requires a modern-ish CPU to run (2019+ with AVX-512).
 
 ## Usage
 
