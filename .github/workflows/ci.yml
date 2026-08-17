@@ -86,7 +86,16 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
+      - name: CPU fingerprint
+        shell: pwsh
+        run: |
+          $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
+          $raw = "$($cpu.ProcessorId)|$($cpu.Name)|$($cpu.L2CacheSize)|$($cpu.L3CacheSize)"
+          $hash = (Get-FileHash -InputStream ([IO.MemoryStream]::new([Text.Encoding]::UTF8.GetBytes($raw))) -Algorithm SHA256).Hash.ToLower()
+          "CPU_KEY=$hash" | Out-File -FilePath $env:GITHUB_ENV -Append
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ env.CPU_KEY }}
       - name: Build Executable
         run: |
           cargo build --locked --all-features --release
