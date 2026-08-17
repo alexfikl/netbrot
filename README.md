@@ -32,7 +32,11 @@ cargo build --release
 
 A nightly build of a Windows executable can be found
 [on the Releases page](https://github.com/alexfikl/netbrot/releases/tag/nightly).
-Note that this build requires a modern-ish CPU to run (2019+ with AVX-512).
+Note that this build requires a modern-ish CPU to run (2013+ with AVX2) due to
+setting `target-cpu=x86-64-v3`. To build with different flags use
+```bash
+RUSTFLAGS="-Ctarget-cpu=native ..." cargo build --release
+```
 
 ## Usage
 
