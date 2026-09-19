@@ -362,9 +362,8 @@ def save_geometry(
                 ns = cs.normal
                 ax.plot(zs.real, zs.imag, "o-", lw=1)
                 ax.quiver(zs.real, zs.imag, ns.real, ns.imag)
-                if bbox:
-                    ax.set_xlim([bbox[0], bbox[1]])
-                    ax.set_ylim([bbox[2], bbox[3]])
+                ax.set_xlim([bbox[0], bbox[1]])
+                ax.set_ylim([bbox[2], bbox[3]])
 
         centroids[i] = curve.centroid
         areas[i] = curve.area
