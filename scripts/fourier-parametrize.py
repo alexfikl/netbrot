@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from collections.abc import Iterator, Sequence
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from functools import cached_property
@@ -56,7 +56,7 @@ def set_recommended_matplotlib() -> None:
 
 
 @contextmanager
-def axis(filename: pathlib.Path) -> Iterator[Any]:
+def axis(filename: pathlib.Path) -> Generator[Any]:
     import matplotlib.pyplot as mp
 
     if not filename.suffix:

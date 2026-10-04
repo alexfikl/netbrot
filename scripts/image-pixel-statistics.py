@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from typing import Any
 
@@ -39,7 +39,7 @@ def set_recommended_matplotlib() -> None:
 
 
 @contextmanager
-def figure(filename: pathlib.Path, *, overwrite: bool = False) -> Iterator[Any]:
+def figure(filename: pathlib.Path, *, overwrite: bool = False) -> Generator[Any]:
     import matplotlib.pyplot as mp
 
     if not overwrite and filename.exists():
