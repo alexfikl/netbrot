@@ -12,7 +12,7 @@
 
 use std::error::Error;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter};
 use std::path::Path;
 use std::time::Instant;
 
@@ -30,9 +30,6 @@ use serde::{Deserialize, Serialize};
 use clap::{Parser, ValueHint};
 use indicatif::ParallelProgressIterator;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-
-use little_exif::exif_tag::ExifTag;
-use little_exif::metadata::Metadata;
 
 // {{{ Command-line parser
 
@@ -257,13 +254,7 @@ fn main() {
 
     let outfile = args.outfile.unwrap_or(args.exhibit);
     let filename = Path::new(&outfile).with_extension("png");
-
-    println!("Writing result to '{}'.", filename.display());
-    pixels.save(&filename).unwrap();
-
-    println!("Writing metadata to '{}'.", filename.display());
-    let mut metadata = Metadata::new();
-    metadata.set_tag(ExifTag::ImageDescription(format!(
+    let description = format!(
         "[{}, {}, {}, {}, {}, {}]",
         renderer.bbox.0,
         renderer.bbox.1,
@@ -271,6 +262,17 @@ fn main() {
         renderer.bbox.3,
         brot.escape_radius_squared.sqrt(),
         brot.maxit
-    )));
-    metadata.write_to_file(&filename).unwrap();
+    );
+
+    println!("Writing result to '{}'.", filename.display());
+    let file = File::create(&filename).unwrap();
+    let mut encoder = png::Encoder::new(BufWriter::new(file), pixels.width(), pixels.height());
+    encoder.set_color(png::ColorType::Rgb);
+    encoder.set_depth(png::BitDepth::Eight);
+    encoder
+        .add_text_chunk("Description".to_string(), description)
+        .unwrap();
+    let mut writer = encoder.write_header().unwrap();
+    writer.write_image_data(pixels.as_raw()).unwrap();
+    writer.finish().unwrap();
 }

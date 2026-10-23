@@ -8,9 +8,9 @@ clap = { "version" = "4.5", "features" = ["derive"] }
 colors-transform = { "version" = "0.2" }
 image = { "version" = "0.25", "default-features" = false, "features" = ["png"] }
 indicatif = { "version" = "0.18", "features" = ["rayon"]}
-little_exif = { "version" = "0.6" }
 nalgebra = { "version" = "0.35", "features" = ["serde-serialize"] }
 num-complex = { "version" = "0.4" }
+png = { "version" = "0.18" }
 rand = { "version" = "0.10" }
 rand_distr = { "version" = "0.6" }
 rayon = { "version" = "1.10" }
