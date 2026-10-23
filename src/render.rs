@@ -4,7 +4,7 @@
 
 use clap::ValueEnum;
 use image::{Rgb, RgbImage};
-use num::complex::{Complex64, c64};
+use num_complex::{Complex64, c64};
 
 use crate::colorschemes::{
     ColorType, get_fixed_point_color, get_period_color, get_smooth_orbit_color,

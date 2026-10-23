@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 ml3m
 // SPDX-License-Identifier: MIT
 
-use num::complex::{Complex64, c64};
+use num_complex::{Complex64, c64};
 
 use nalgebra::{DMatrix, DVector};
 
@@ -285,7 +285,7 @@ mod tests {
     use super::*;
 
     use nalgebra::dmatrix;
-    use num::complex::c64;
+    use num_complex::c64;
 
     use crate::fixedpoints::generate_random_points_in_ball;
 

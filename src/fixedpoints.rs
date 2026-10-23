@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2024 Alexandru Fikl <alexfikl@gmail.com>
 // SPDX-License-Identifier: MIT
 
-use num::complex::c64;
+use num_complex::c64;
 use rand::RngExt;
 use rand_distr::{Distribution, Normal};
 

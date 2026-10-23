@@ -3,7 +3,7 @@
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use nalgebra::DVector;
-use num::complex::{Complex64, c64};
+use num_complex::{Complex64, c64};
 
 #[inline(never)]
 fn escape_iter(z: &mut DVector<Complex64>, maxit: usize) -> f64 {

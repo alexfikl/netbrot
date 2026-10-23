@@ -24,7 +24,7 @@ use netbrot::render::{
 };
 
 use nalgebra::DMatrix;
-use num::complex::Complex64;
+use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
 
 use clap::{Parser, ValueHint};

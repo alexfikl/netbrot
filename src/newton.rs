@@ -4,8 +4,7 @@
 use std::fmt;
 
 use nalgebra::{DMatrix, DVector, RealField, UniformNorm};
-use num::complex::Complex;
-use num_traits::Float;
+use num_complex::Complex;
 
 const NEWTON_DEFAULT_RTOL: f64 = 1.0e-6;
 const NEWTON_DEFAULT_MAXIT: u32 = 256;
@@ -69,7 +68,7 @@ pub struct NewtonRaphsonResult<T> {
 
 impl<T, F, J> NewtonRaphson<T, F, J>
 where
-    T: Float + RealField,
+    T: RealField,
     F: Fn(&Vector<T>) -> Vector<T>,
     J: Fn(&Vector<T>) -> Matrix<T>,
 {
@@ -77,7 +76,7 @@ where
         Self {
             f,
             j,
-            rtol: T::from(NEWTON_DEFAULT_RTOL).unwrap(),
+            rtol: T::from_f64(NEWTON_DEFAULT_RTOL).unwrap(),
             maxit: NEWTON_DEFAULT_MAXIT,
         }
     }
@@ -148,7 +147,7 @@ mod tests {
     use super::*;
 
     use nalgebra::{dmatrix, dvector};
-    use num::complex::{Complex64, c64};
+    use num_complex::{Complex64, c64};
 
     use crate::iterate::{Matrix, Vector};
 
@@ -198,7 +197,7 @@ mod tests {
                 let fz = f(&z).apply_norm(&UniformNorm);
                 println!("zstar {}f(z) {:e} rtol {:e}", z, fz, NEWTON_DEFAULT_RTOL);
                 assert!(fz < NEWTON_DEFAULT_RTOL);
-                assert!((z[0].re - 2.0.sqrt()).abs() < NEWTON_DEFAULT_RTOL);
+                assert!((z[0].re - 2.0_f64.sqrt()).abs() < NEWTON_DEFAULT_RTOL);
             }
             Err(_) => unreachable!(),
         };

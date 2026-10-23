@@ -3,7 +3,7 @@
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use nalgebra::DVector;
-use num::complex::{Complex64, c64};
+use num_complex::{Complex64, c64};
 
 // NOTE: this benchmark is supposed to compare different ways to do
 //      z[i] = matz[i] * matz[i] + c
