@@ -50,7 +50,7 @@ def find_bounding_box(
     *,
     pad: float = 0.0,
 ) -> tuple[float, float, float, float]:
-    import cv2  # ty: ignore[unresolved-import]
+    import cv2  # ty: ignore[import-not-found]
 
     img = cv2.imread(imagefile)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -91,7 +91,7 @@ def main(
     overwrite: bool = False,
 ) -> int:
     try:
-        import cv2  # ty: ignore[unresolved-import] # ruff:ignore[unused-import]
+        import cv2  # ty: ignore[import-not-found] # ruff:ignore[unused-import]
     except ImportError:
         log.error("'cv2' package not found.")
         return 1

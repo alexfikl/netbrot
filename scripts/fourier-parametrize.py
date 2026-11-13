@@ -225,7 +225,7 @@ def parametrize_fourier(
     overwrite: bool = False,
     debug: bool = False,
 ) -> Sequence[ComplexArray]:
-    import cv2  # ty: ignore[unresolved-import]
+    import cv2  # ty: ignore[import-not-found]
 
     xmin, xmax, ymin, ymax = bbox
     results = []
@@ -412,7 +412,7 @@ def main(
     debug: bool = False,
 ) -> int:
     try:
-        import cv2  # ty: ignore[unresolved-import] # ruff:ignore[unused-import]
+        import cv2  # ty: ignore[import-not-found] # ruff:ignore[unused-import]
     except ImportError:
         log.error("'cv2' package not found.")
         return 1
